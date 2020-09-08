@@ -4,13 +4,14 @@ Turn the original data into the corresponding graphs and the corresponding annot
 
 import sys
 import os
+import argparse
 
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.realpath(__file__))
     sys.path.append(os.path.join(script_dir, '..'))
 
-from data_processor.chopper import all_rna_process
-from data_processor.annotator import annotate_all
+from build_data.chopper import all_rna_process
+from build_data.annotator import annotate_all
 from tools.utils import makedir
 
 
@@ -20,8 +21,8 @@ def setup_dirs():
     :return:
     """
     script_dir = os.path.dirname(__file__)
-    makedir(os.path.join(script_dir, '../data/annotated'), permissive=True)
-    makedir(os.path.join(script_dir, '../data/graphs'), permissive=True)
+    makedir(os.path.join(script_dir, 'data/annotated'), permissive=True)
+    makedir(os.path.join(script_dir, 'data/graphs'), permissive=True)
     print('Done creating files')
 
 
@@ -34,11 +35,11 @@ def preprocess_data(name, in_graph='samples_graphs', in_pdb='samples_pdb'):
     :return:
     """
     script_dir = os.path.dirname(__file__)
-    graph_path = os.path.join(script_dir, "../data/graphs/", name)
-    annotated_path = os.path.join(script_dir, "../data/annotated/", name)
+    graph_path = os.path.join(script_dir, "data/graphs/", name)
+    annotated_path = os.path.join(script_dir, "data/annotated/", name)
     makedir(graph_path, permissive=False)
     makedir(annotated_path, permissive=False)
-    all_rna_process(graph_path='../data/' + in_graph, pdb_path='../data/' + in_pdb, dest=graph_path)
+    all_rna_process(graph_path='data/' + in_graph, pdb_path='data/' + in_pdb, dest=graph_path)
     print('Done producing graphs')
 
     annotate_all(graph_path=graph_path, dump_path=annotated_path)
@@ -50,7 +51,14 @@ def preprocess_data(name, in_graph='samples_graphs', in_pdb='samples_pdb'):
 if __name__ == '__main__':
     setup_dirs()
 
-    in_graph = 'carnaval'
-    in_pdb = 'all_rna_pdb'
-    name = 'whole'
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pdb_dir", "-da", type=str, default="all_rna_pdb")
+    parser.add_argument("--graph_dir", "-da", type=str, default="all_rna_pdb")
+    parser.add_argument("--name", "-n", type=str, default="default_name")
+
+    args,_ = parser.parse_known_args()
+    pdb_dir = args.pdb_dir
+    graph_dir = args.graph_dir
+    name = args.name
+
     preprocess_data(in_graph=in_graph, in_pdb=in_pdb, name=name)
