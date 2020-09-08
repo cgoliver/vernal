@@ -1,6 +1,6 @@
 # vernal
 
-![](images/vernal_img.png)
+![](images/vernal-img.png)
 
 `veRNAl` is an algorithm for identifying fuzzy recurrent subgraphs in RNA 3D networks.
 
