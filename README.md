@@ -38,6 +38,7 @@ The main packages we use are:
 * BioPython
 * Pytorch
 * DGL (Deep Graph Library)
+* Scikit-learn
 
 ```
 conda env create -f environment.yml
@@ -58,7 +59,13 @@ Download RNA networks:
 * [whole crystal structures (non-redundant)](https://mega.nz/file/lLpxjBJA#2H837fqO7VsVnLWpfT0bo4i04lFTeYSul5N_mY8pJW0)
 * [whole graphs (non-redundant)](https://mega.nz/file/YWIHEQxQ#qRUCL8X9eV6NtViXgkZI1lOBlCfc_cWokvMgN-XB9B0)
 
-Bulid the dataset
+Save the crystal structures (first link) to the `data/` folder.
+
+Save the whole graphs (second link) to the `data/graphs` folder.
+
+Bulid the dataset. This will take some time as it involves loading many large PDB files.
+
+You can skip all the data preparation if you want to use a [pre-built dataset](), just download and move to the `data/annotated/` folder.
 
 ```
 python build_data/main.py
