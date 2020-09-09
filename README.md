@@ -27,6 +27,9 @@ This repository has three main components:
 * Subgraph Embeddings `/train_embeddings`
 * Motif Building `/build_motifs`
 
+Each subdirectory contrains a `main.py` file which controls the behaviour of that stage.
+For full usage, run `python <dir>/main.py -h`
+
 ## 0. Install Dependencies
 
 The command below will install the full list of dependencies.
