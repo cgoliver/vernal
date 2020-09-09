@@ -1,8 +1,9 @@
-# vernal
+# vernal: Fuzzy Recurrent Subgraph Mining
+
 
 ![](images/vernal-img.png)
 
-`veRNAl` is an algorithm for identifying fuzzy recurrent subgraphs in RNA 3D networks.
+This is a reference implementation of `veRNAl`, an algorithm for identifying fuzzy recurrent subgraphs in RNA 3D networks.
 
 Please cite:
 
@@ -15,10 +16,9 @@ Please cite:
 }
 ```
 
-
 See [full paper](https://arxiv.org/abs/2009.00664) for complete description of the algorithm.
 
-You can view the results from an already trained model [here](http://vernal.cs.mcgill.ca/).
+You can browse the results from an already trained model [here](http://vernal.cs.mcgill.ca/).
 
 
 This repository has three main components:
@@ -60,6 +60,8 @@ mkdir data/graphs
 mkdir data/annotated
 ```
 
+Data building and loading will take some time (~1 hr), you can skip all the data preparation if you want to use a [pre-built dataset](https://mega.nz/file/pCJGUIQA#Z6pNGjrk-TCC27aUeWhEcjLjGtlrs46D61PNRT2WeZ0), just download and move to the `data/annotated/` folder and move to step 2.
+
 Download RNA networks:
 
 * [whole crystal structures (non-redundant)](https://mega.nz/file/lLpxjBJA#2H837fqO7VsVnLWpfT0bo4i04lFTeYSul5N_mY8pJW0)
@@ -71,7 +73,6 @@ Save the whole graphs (second link) to the `data/graphs` folder.
 
 Bulid the dataset. This will take some time as it involves loading many large PDB files.
 
-You can skip all the data preparation if you want to use a [pre-built dataset](), just download and move to the `data/annotated/` folder.
 
 ```
 python prepare_data/main.py -n <data-id>

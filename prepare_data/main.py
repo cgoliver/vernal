@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--pdb_dir", "-da", type=str, default="all_rna_pdb_nr")
-    parser.add_argument("--graph_dir", "-g", type=str, default="whole_rna_graphs_nr")
+    parser.add_argument("--graph_dir", "-g", type=str, default="rna_graphs_nr")
     parser.add_argument("--name", "-n", type=str, default="default_name")
 
     args,_ = parser.parse_known_args()
