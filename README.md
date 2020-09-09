@@ -23,8 +23,8 @@ You can view the results from an already trained model [here](http://vernal.cs.m
 
 This repository has three main components:
 
-* Preparing Data `/build_data`
-* Subgraph Embeddings `/learning`
+* Preparing Data `/prepare_data`
+* Subgraph Embeddings `/train_embeddings`
 * Motif Building `/build_motifs`
 
 ## 0. Install Dependencies
@@ -47,6 +47,12 @@ conda activate vernal
 
 ## 1. Data Preparation
 
+This step loads the whole PDBs, creates uniformly-sized chunks (`chopper.py`) and builds
+newtorkx graphs for each chunk.
+
+We build a rooted subgraph and graphlet hashtable for each node in `annotate.py` to
+speed up the similarity function computations at training time.
+
 Create two directories where the data will be kept:
 
 ```
@@ -68,7 +74,7 @@ Bulid the dataset. This will take some time as it involves loading many large PD
 You can skip all the data preparation if you want to use a [pre-built dataset](), just download and move to the `data/annotated/` folder.
 
 ```
-python build_data/main.py
+python prepare_data/main.py -n <data-id>
 ```
 
 ## 2. Subgraph Embeddings
