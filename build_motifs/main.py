@@ -25,7 +25,7 @@ def get_args():
                                         default="default_name",
                                         help="ID of trained embedding model")
     parser.add_argument("--graphs", "-g", type=str,
-                                          default="data/rna_graphs_nr",
+                                          default="data/graphs/rna_graphs_nr",
                                           help="Path to full graphs.")
     parser.add_argument('--name', type=str,
                                   default="default_name",
@@ -63,6 +63,13 @@ def get_args():
                                              action='store_true',
                                       help="If True, only connect via backbone.")
 
+    parser.add_argument("--min_motif", "-m", type=int,
+                                             default=100,
+                                             help="Minimum number of instnaaces\
+                                                   to count as motif.")
+    parser.add_argument("--max_var", "-mv", type=float,
+                                             default=0.01,
+                                             help="Maximum cluster variance.")
     # Retrieve args
 
     parser.add_argument("--do_retrieve", "-rt",
@@ -81,10 +88,10 @@ def build_mgraph(args):
                     clust_algo=args.clust_algo,
                     n_components=args.n_components,
                     optimize=False,
-                    min_edge=args.min_edge,
+                    min_edge=args.min_motif,
                     max_var=args.max_var,
-                    max_graph=None,
-                    graph_diar=args.graphs,
+                    max_graphs=None,
+                    graph_dir=args.graphs,
                     nc_only=args.nc
                     )
     print(f"Built Meta Graph in {time.perf_counter() - start} s")
