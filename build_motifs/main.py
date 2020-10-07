@@ -114,8 +114,10 @@ def main():
     args,_ = get_args()
     pass
     if args.meta_graph:
+        print(">>> Loading existing meta-graph.")
         mgraph = pickle.load(args.meta_graph)
     else:
+        print(">>> Building new meta graph.")
         build_mgraph(args)
 
     if args.do_build:
