@@ -92,3 +92,24 @@ python learning/main.py -n my_model
 ## 3. Motif Building
 
 Finally, the trained RGCN and the whole graphs are used to build motifs.
+
+
+Here, you have three options:
+
+1. Build/load a new meta graph
+2. Use a meta graph to build motifs
+3. Use a meta graph to search for matches to a graph query
+
+To build a new meta graph: 
+
+If this is the first time you build a meta-graph, create the following folder:
+
+```
+mkdir results/mggs
+```
+
+```
+python build_motifs/main.py -r my_model --mgg_name my_metagraph
+```
+
+The new meta-graph will be built and dumped in the folder `results/mggs/my_metagraph.p`
