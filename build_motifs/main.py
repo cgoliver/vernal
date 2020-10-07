@@ -27,7 +27,7 @@ def get_args():
     parser.add_argument("--graphs", "-g", type=str,
                                           default="data/graphs/rna_graphs_nr",
                                           help="Path to full graphs.")
-    parser.add_argument('--name', type=str,
+    parser.add_argument('--mgg_name', "-mn", type=str,
                                   default="default_name",
                                   help="The name of the pickled meta graph.")
     parser.add_argument('--clust_algo', type=str,
@@ -100,8 +100,9 @@ def build_mgraph(args):
         print("pruning")
         mgg.prune()
 
-    print(f"Dumping meta graph in {args.mgg_name}")
-    pickle.dump(mgg, open(args.name + '.p', 'wb'))
+    print(f"Dumping meta graph in results/mggs/{args.mgg_name}")
+    pickle.dump(mgg, open(os.path.join("results", "mggs", args.mgg_name + '.p'),
+                          'wb'))
     return mgg
 
 def build_motifs():
