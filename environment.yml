@@ -96,3 +96,7 @@ dependencies:
   - zipp=3.1.0=py_0
   - zlib=1.2.11=h1de35cc_3
   - zstd=1.4.5=h41d2c2f_0
+  - pip:
+    - multiset==2.1.1
+prefix: /Users/carlosgonzalezoliver/anaconda3/envs/vernal
+
