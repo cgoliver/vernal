@@ -5,6 +5,7 @@ import itertools
 
 from tqdm import tqdm
 import networkx as nx
+import numpy as np
 
 faces = ['W', 'S', 'H']
 orientations = ['C', 'T']
@@ -12,11 +13,15 @@ valid_edges = ['B53'] + [orient + e1 + e2 for e1, e2 in itertools.product(faces,
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
+graph_dir = os.path.join("..", "data", "graphs", "rna_graphs_nr")
+annot_dir = os.path.join("..", "data", "annotated", "all_rna_nr")
+
 if __name__ == "__main__":
     sys.path.append(os.path.join(script_dir, '..'))
 
 
-def graph_from_node(node_id, annot_dir=os.path.join(script_dir, '../data/annotated/whole_v4/')):
+def graph_from_node(node_id,
+                    annot_dir=os.path.join(script_dir, '../data/annotated/whole_v4/')):
     """
         Fetch graph from a node id.
     """
@@ -24,7 +29,7 @@ def graph_from_node(node_id, annot_dir=os.path.join(script_dir, '../data/annotat
     return pickle.load(open(graph_path, 'rb'))['graph'].to_undirected()
 
 
-def whole_graph_from_node(node_id, annot_dir=os.path.join(script_dir, '../data/unchopped_v4_nr/')):
+def whole_graph_from_node(node_id, annot_dir=os.path.join(script_dir, graph_dir)):
     """
         Fetch whole graph from a node id.
     """

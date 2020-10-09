@@ -19,7 +19,7 @@ def get_args():
     # Meta graph Args
     parser.add_argument("--meta_graph", "-mg", type=str,
                         default="",
-                        help="Path to meta-graph pickle. If none,\
+                        help="Meta graph iD to load. If none,\
                             build a new one")
     parser.add_argument("--rgcn", "-r", type=str,
                                         default="default_name",
@@ -105,7 +105,9 @@ def build_mgraph(args):
                           'wb'))
     return mgg
 
-def build_motifs():
+def build_motifs(mgraph, args):
+    from build_motifs.motifs import maga
+    maga_graph = maga(mgraph, levels=args.levels)
     pass
 
 def retrieve():
@@ -116,13 +118,16 @@ def main():
     pass
     if args.meta_graph:
         print(">>> Loading existing meta-graph.")
-        mgraph = pickle.load(args.meta_graph)
+        mgraph = pickle.load(open(
+                             os.path.join("results", "mggs", args.meta_graph + ".p"),
+                             "rb"
+                            ))
     else:
         print(">>> Building new meta graph.")
-        build_mgraph(args)
+        mgraph = build_mgraph(args)
 
     if args.do_build:
-        build_motifs(args)
+        build_motifs(mgraph, args)
 
     if args.do_retrieve:
         retrieve(args)

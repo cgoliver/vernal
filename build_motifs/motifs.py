@@ -14,10 +14,11 @@ from tools.graph_utils import has_NC_bfs
 def def_set():
     return defaultdict(set)
 
-def merge_nodesets(self,
-                singleton,
-                motif
-                ):
+def merge_nodesets(maga_graph,
+                   maga_adj,
+                   singleton,
+                    motif
+                    ):
     """
         For each instance in motif, try to extend it with an edge
         that goes into the singleton cluster.
@@ -26,7 +27,7 @@ def merge_nodesets(self,
     merged_nodeset = set()
 
     # set of nodes of current motif
-    nodesets = self.maga_graph.nodes[motif]['node_set']
+    nodesets = maga_graph.nodes[motif]['node_set']
 
     # cluster ID to merge with
     singleton = list(singleton)[0]
@@ -39,7 +40,7 @@ def merge_nodesets(self,
                 # get nodes in form (node, *) where
                 # * contains all nodes connected to `node` that
                 # belong to motif `singleton`
-                singleton_nodes = self.maga_adj[node][singleton]
+                singleton_nodes = maga_adj[node][singleton]
             except KeyError:
                 pass
             else:
@@ -56,6 +57,7 @@ def merge_nodesets(self,
 
 def maga_next(maga_graph,
               maga_tree,
+              maga_adj,
               mgraph,
               boring_clusters,
               min_edge=100,
@@ -82,7 +84,10 @@ def maga_next(maga_graph,
 
             # merge phase
             new_node = motif.combine(singleton)
-            new_nodeset = merge_nodesets(singleton, motif)
+            new_nodeset = merge_nodesets(maga_graph,
+                                         maga_adj,
+                                         singleton,
+                                         motif)
 
             # don't repeat the same edge
             edgeset = set([singleton, motif])
@@ -120,7 +125,7 @@ def maga_next(maga_graph,
             # for each cluster in the motif, add connection to other clutters
             # e.g. for ABC, look at all singletons adjacent to A, B, and C
             for clust in new_node:
-                for nei in mgraph.neighbors(clust):
+                for nei in mgraph.graph.neighbors(clust):
                     maga_graph.add_edge(ms.FrozenMultiset([nei]), new_node)
             pass
 
@@ -137,8 +142,10 @@ def maga_next(maga_graph,
 
 
 def maga(mgraph, levels=10):
-    maga_graph = nx.relabel_nodes(mgraph,
-                                    {n: ms.FrozenMultiset([n]) for n in mgraph})
+    print(f">>> Meta-graph has {len(mgraph.graph.nodes())} nodes",
+                f"and {len(mgraph.graph.edges())} edges.")
+    maga_graph = nx.relabel_nodes(mgraph.graph,
+                                  {n: ms.FrozenMultiset([n]) for n in mgraph.graph})
 
     maga_graph = maga_graph.to_directed()
 
@@ -148,7 +155,7 @@ def maga(mgraph, levels=10):
     boring_clusters = {c: {'samples': 0.01, 'boring': 0} for c in set(mgraph.labels)}
 
     maga_tree = nx.DiGraph()
-    maga_tree.add_nodes_from((ms.FrozenMultiset([n]) for n in mgraph))
+    maga_tree.add_nodes_from((ms.FrozenMultiset([n]) for n in mgraph.graph))
 
     # this dictionary is of the following form
     # {u: {c1: {v, w}, c2: {x}}}
@@ -159,9 +166,10 @@ def maga(mgraph, levels=10):
 
     maga_adj = defaultdict(def_set)
 
+    print(">>> Building MAGA graph.")
     for n in maga_graph.nodes():
         maga_graph.nodes[n]['node_set'] = set()
-    for c1, c2, d in maga_graph.edges(data=True):
+    for c1, c2, d in tqdm(maga_graph.edges(data=True)):
         maga_graph[c1][c2]['edge_set'] = {frozenset([u, v]) for u, v, _ in d['edge_set']}
         for u, v in d['edge_set']:
 
@@ -186,17 +194,20 @@ def maga(mgraph, levels=10):
     boring_clusters = {clust for clust, counts in boring_clusters.items()\
                             if counts['boring'] / counts['samples'] > .8}
 
-    maga_build = maga_next(maga_graph)
-    for l, maga_graph in enumerate(maga_build,
-                                   maga_tree,
-                                   maga_adj,
-                                   mgraph,
-                                   boring_clusters,
-                                   levels=levels):
+    print(">>> Doing MAGA.")
+    maga_build = maga_next(maga_graph,
+                           maga_tree,
+                           maga_adj,
+                           mgraph,
+                           boring_clusters,
+                           levels=levels)
+    for l, maga_graph in enumerate(maga_build):
         print("maga level ", l)
         print("maga nodes ", len(maga_graph.nodes()),
                 "maga edges ", len(maga_graph.edges())
                 )
+
+    return maga_graph
 
 if __name__ == "__main__":
     pass
