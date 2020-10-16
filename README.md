@@ -113,3 +113,6 @@ python build_motifs/main.py -r my_model --mgg_name my_metagraph
 ```
 
 The new meta-graph will be built and dumped in the folder `results/mggs/my_metagraph.p`
+
+
+Have fun!
