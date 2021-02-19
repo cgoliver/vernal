@@ -75,7 +75,7 @@ def node_2_unordered_rings(G, v, depth=5, hasher=None):
     if do_hash:
         graphlet_rings = [[hasher.hash(extract_graphlet(G, v))]]
     else:
-        graphlet_rings = None
+        graphlet_rings = [[extract_graphlet(G, v)]]
 
     node_rings = [[v]]
     edge_rings = [[None]]
@@ -99,6 +99,8 @@ def node_2_unordered_rings(G, v, depth=5, hasher=None):
                 if e_set not in visited_edges:
                     if do_hash:
                         children_graphlet.append(hasher.hash(extract_graphlet(G, nei)))
+                    else:
+                        children_graphlet.append(extract_graphlet(G, nei))
                     e_labels.append(G[node][nei]['label'])
                     visited_edges.add(e_set)
             ring_k.extend(children)
@@ -107,8 +109,7 @@ def node_2_unordered_rings(G, v, depth=5, hasher=None):
                 ring_k_graphlet.extend(children_graphlet)
         node_rings.append(ring_k)
         edge_rings.append(edge_ring_k)
-        if do_hash:
-            graphlet_rings.append(ring_k_graphlet)
+        graphlet_rings.append(ring_k_graphlet)
     # uncomment to draw root node
     # from tools.drawing import rna_draw
     # rna_draw(G, node_colors=['blue' if n == v else 'grey' for n in G.nodes()], show=True)

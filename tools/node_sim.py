@@ -71,7 +71,8 @@ class SimFunctionNode():
                  idf=False,
                  normalization=None,
                  hash_init='whole_v3',
-                 edge_map=EDGE_MAP):
+                 edge_map=EDGE_MAP,
+                 cache=True):
 
         POSSIBLE_METHODS = ['R_1', 'R_iso', 'R_graphlets', 'R_ged', 'hungarian', 'graphlet']
         assert method in POSSIBLE_METHODS
@@ -81,10 +82,18 @@ class SimFunctionNode():
         self.decay = decay
         self.normalization = normalization
 
+        self.cache = cache
+
         self.edge_map = edge_map
 
-        if self.method in ['R_ged', 'R_graphlets', 'graphlet']:
+        if self.cache:
             self.GED_table = defaultdict(dict)
+            self.hash_table = {}
+        else:
+            self.GED_table = None
+            self.hash_table = None
+
+        if cache and self.method in ['R_ged', 'R_graphlets', 'graphlet']:
             init_path = os.path.join(script_dir, '..', 'data', 'hashing', hash_init + '.p')
             print(f">>> loading hash table from {init_path}")
             self.hasher, self.hash_table = \
@@ -487,7 +496,7 @@ class SimFunctionNode():
         '''
         cost_matrix = np.array(
             [[self.graphlet_cost_nodes(node_i, node_j, pos=True) for node_j in ringlist2] for node_i in ringlist1])
-        
+
         row_ind, col_ind = linear_sum_assignment(cost_matrix)
 
         # This is a distance score, we turn in into a similarity with exp(-x)
