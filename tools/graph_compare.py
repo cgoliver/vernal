@@ -6,6 +6,7 @@
 
 import sys
 import os
+from functools import partial
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 if __name__ == "__main__":
@@ -42,9 +43,6 @@ def compare_graphs(g1, g2, depth=2):
 
     simfunc = SimFunctionNode('R_graphlets', 2, cache=False)
 
-    print(rings_1)
-    print(rings_2)
-
     cost = - np.array(
         [[simfunc.compare(ring_i, ring_j) for _,ring_i in rings_1['graphlet'].items()]\
                                           for _,ring_j in rings_2['graphlet'].items()]
@@ -52,6 +50,19 @@ def compare_graphs(g1, g2, depth=2):
     row_ind, col_ind = linear_sum_assignment(cost)
     c = - np.array(cost[row_ind, col_ind]).sum()
     return simfunc.normalize(c, max(len(g1.nodes()), len(g2.nodes())))
+
+def k_most_similar(g, motif_db, k=5):
+    """ Return the `k` most similar graphs to `g` from `motif_db.
+
+
+    Args:
+    ---
+    g (networkx graph): input graph (output from bayespairing)
+    motif_db (list): list of netwrorkx graphs (i.e. bayespairing motif db)
+    k (int): number of matches to return.
+    """
+
+    return sorted(map(partial(compare_graphs, g), motif_db))[-k:]
 
 if __name__ == "__main__":
 
