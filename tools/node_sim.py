@@ -21,6 +21,7 @@ if __name__ == "__main__":
 # from tools.rna_ged import ged
 # from tools.drawing import rna_draw_pair
 from tools.graphlet_hash import *
+from config.graph_keys import *
 
 # GLOBAL VARIABLES
 
@@ -28,18 +29,8 @@ iso_matrix = pickle.load(open(os.path.join(script_dir, '../data/iso_mat.p'), 'rb
 # iso_matrix_ged = iso_matrix
 iso_matrix = iso_matrix[1:, 1:]
 
-# edge_map = {'B53': 0, 'CHH': 1, 'CHS': 2, 'CHW': 3, 'CSH': 4, 'CSS': 5, 'CSW': 6, 'CWH': 7, 'CWS': 8, 'CWW': 9,
-#             'THH': 10, 'THS': 11, 'THW': 12, 'TSH': 13, 'TSS': 14, 'TSW': 15, 'TWH': 16, 'TWS': 17, 'TWW': 18}
-EDGE_MAP = {'B53': 0, 'CHH': 1, 'CHS': 2, 'CHW': 3, 'CSH': 2, 'CSS': 4, 'CSW': 5, 'CWH': 3, 'CWS': 5, 'CWW': 6,
-            'THH': 7, 'THS': 8, 'THW': 9, 'TSH': 8, 'TSS': 10, 'TSW': 11, 'TWH': 9, 'TWS': 11, 'TWW': 12}
 
-IDF = {'TSS': 1.3508944643423815, 'TWW': 2.2521850545837103, 'CWW': 0.7302387734487946, 'B53': 0.6931471805599453,
-       'CSS': 1.3562625353981017, 'TSH': 1.0617196804844624, 'THS': 1.0617196804844624, 'CSH': 1.6543492684466312,
-       'CHS': 1.6543492684466312, 'THW': 1.3619066730630602, 'TWH': 1.3619066730630602, 'THH': 2.3624726636947186,
-       'CWH': 2.220046456989285, 'CHW': 2.220046456989285, 'TSW': 2.3588208814802263, 'TWS': 2.3588208814802263,
-       'CWS': 2.0236918714028707, 'CHH': 4.627784875752877, 'CSW': 2.0236918714028707}
-
-indel_vector = [1 if e == 'B53' else 2 if e == 'CWW' else 3 for e in sorted(EDGE_MAP.keys())]
+# indel_vector = [1 if e == 'B53' else 2 if e == 'CWW' else 3 for e in sorted(EDGE_MAP_FR3D.keys())]
 
 
 def simfunc_from_hparams(hparams):
@@ -54,7 +45,7 @@ def simfunc_from_hparams(hparams):
                                    hash_init=hparams.get('argparse', 'annotated_data'),
                                    decay=hparams.get('argparse', 'decay'),
                                    normalization=hparams.get('argparse', 'normalization'),
-                                   edge_map=hparams.get('edges', 'edge_map'),
+                                   tool=hparams.get('argparse', 'tool'),
                                    )
     return node_simfunc
 
@@ -71,7 +62,7 @@ class SimFunctionNode():
                  idf=False,
                  normalization=None,
                  hash_init='whole_v3',
-                 edge_map=EDGE_MAP,
+                 tool='RGLIB',
                  cache=True):
 
         POSSIBLE_METHODS = ['R_1', 'R_iso', 'R_graphlets', 'R_ged', 'hungarian', 'graphlet']
@@ -84,6 +75,8 @@ class SimFunctionNode():
 
         self.cache = cache
 
+        edge_map = GRAPH_KEYS['edge_map'][tool]
+        self.tool = tool
         self.edge_map = edge_map
 
         if self.cache:

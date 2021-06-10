@@ -117,16 +117,14 @@ def run_to_hparams(run):
     return hparams
 
 
-def load_model(run, permissive=False, verbose=True):
+def load_model(run, permissive=False, verbose=False):
     """
     Input the name of a run
     :param run:
     :return:
     """
     hparams = run_to_hparams(run)
-    hparams.add_value('argparse', 'num_edge_types', 13)
     model = model_from_hparams(hparams, verbose=verbose)
-    # print(hparams)
     try:
         model_dict = torch.load(os.path.join(script_dir, f'../results/trained_models/{run}/{run}.pth')
                                 , map_location='cpu')
@@ -138,13 +136,9 @@ def load_model(run, permissive=False, verbose=True):
     return model
 
 
-default_edge_map = {'B53': 0, 'CHH': 1, 'CHS': 2, 'CHW': 3, 'CSH': 2, 'CSS': 4, 'CSW': 5, 'CWH': 3, 'CWS': 5, 'CWW': 6,
-                    'THH': 7, 'THS': 8, 'THW': 9, 'TSH': 8, 'TSS': 10, 'TSW': 11, 'TWH': 9, 'TWS': 11, 'TWW': 12}
-
-
 def inference_on_graph(model,
                        graph,
-                       edge_map=default_edge_map,
+                       edge_map,
                        device='cpu',
                        nc_only=False):
     """
@@ -177,7 +171,7 @@ def inference_on_graph(model,
 def inference_on_graph_run(run,
                            graph,
                            device='cpu',
-                           verbose=True,
+                           verbose=False,
                            nc_only=False):
     """
         Do inference on one networkx graph.
@@ -311,7 +305,7 @@ def inference_on_list_gen(run,
 
 def predict(model,
             loader,
-            max_graphs=10,
+            max_graphs=None,
             nc_only=False,
             get_sim_mat=False,
             device='cpu'):

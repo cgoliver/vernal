@@ -63,8 +63,6 @@ class MGraph:
     id_to_score : { id : max_proba } the proba with which a node belongs to a cluster.
                   We could also use embeddings distances
     gm : a gaussian mixture object that is already trained to perform inference on.
-
-
     """
 
     def split_by_graph(self, nodesets):
@@ -595,7 +593,7 @@ class MGraphAll(MGraph):
         # BUILD MNODES
         model_output = inference_on_list(self.run,
                                          self.graph_dir,
-                                         os.listdir(self.graph_dir),
+                                         graph_list=os.listdir(self.graph_dir),
                                          max_graphs=max_graphs,
                                          nc_only=nc_only
                                          )

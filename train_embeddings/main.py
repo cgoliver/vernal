@@ -11,6 +11,8 @@ if __name__ != '__main__':
 script_dir = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(script_dir, '..'))
 
+from config.graph_keys import *
+
 try:
     function = sys.argv[1]
 except IndexError:
@@ -43,11 +45,12 @@ if function == 'train':
     parser.add_argument("-t", "--timed", help="to use timed learning", action='store_true')
     parser.add_argument("-ep", "--num_epochs", type=int, help="number of epochs to train", default=30)
     parser.add_argument("-dev", "--device", default=0, type=int, help="gpu device to use")
+    parser.add_argument("-tool", "--tool", default='RGLIB', type=str, help="To use RGLIB or FR3D tools")
 
     # Kernel function arguments
     parser.add_argument('-sf', '--sim_function', type=str,
                         help='Node similarity function (Supported Options: R_1, R_IDF, R_iso, hungarian).',
-                        default="R_iso")
+                        default="R_1")
     parser.add_argument("-kd", "--kernel_depth", type=int, help="Number of hops to use in kernel.", default=3)
     parser.add_argument("--decay", type=float, help="decay for the kernel", default=0.8)
     parser.add_argument("--idf", default=False, action='store_true', help="To use or not idf"),
@@ -77,10 +80,10 @@ if function == 'train':
                         action='store_false')
     args, _ = parser.parse_known_args()
 
-    print(f"OPTIONS USED \n ",
-          '-' * 10 + '\n',
-          '\n'.join(map(str, vars(args).items()))
-          )
+    # print(f"OPTIONS USED \n ",
+    #       '-' * 10 + '\n',
+    #       '\n'.join(map(str, vars(args).items()))
+    #       )
 
     # Torch imports
     import torch
@@ -103,6 +106,11 @@ if function == 'train':
     hparams = ConfParser(default_path=os.path.join(script_dir, 'inis/default.ini'),
                          path_to_ini=args.ini,
                          argparse=args)
+    edge_map = GRAPH_KEYS['edge_map'][args.tool]
+    idf = IDF
+    hparams.add_value('edges', 'edge_frequencies', idf)
+    hparams.add_value('edges', 'edge_map', edge_map)
+    hparams.add_value('argparse', 'num_edge_types', len(edge_map))
 
     # Hardware settings
     # torch.multiprocessing.set_sharing_strategy('file_system')
@@ -111,7 +119,6 @@ if function == 'train':
     # Dataloader creation
     annotated_path = os.path.join(script_dir, '../data/annotated', args.annotated_data)
     loader = loader_from_hparams(annotated_path=annotated_path, hparams=hparams)
-    hparams.add_value('argparse', 'num_edge_types', loader.num_edge_types)
     train_loader, test_loader, all_loader = loader.get_data()
 
     if len(train_loader) == 0 & len(test_loader) == 0:

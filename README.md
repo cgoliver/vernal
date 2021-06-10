@@ -86,7 +86,7 @@ python prepare_data/main.py -n <data-id>
 Once the training data is built, we train the RGCN.
 
 ```
-python train_embedding/main.py train -n my_model
+python train_embeddings/main.py train -n my_model -da <data-id>
 ```
 
 ## 3. Motif Building

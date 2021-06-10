@@ -8,30 +8,29 @@ import dgl
 import numpy as np
 import torch
 
-
 script_dir = os.path.dirname(os.path.realpath(__file__))
 if __name__ == "__main__":
     sys.path.append(os.path.join(script_dir, '..'))
 
 from torch.utils.data import Dataset, DataLoader, Subset
-from tools.node_sim import k_block_list, simfunc_from_hparams, EDGE_MAP
+from tools.node_sim import k_block_list, simfunc_from_hparams
 from tools.graph_utils import fetch_graph
+from config.graph_keys import *
 
 
 class V1(Dataset):
     def __init__(self,
-                 edge_map,
                  node_simfunc,
                  annotated_path='../data/annotated/samples',
                  depth=3,
                  debug=False,
                  shuffled=False,
+                 tool='RGLIB'
                  ):
 
         self.path = annotated_path
         # self.all_graphs = np.array(sorted(os.listdir(annotated_path)), dtype=np.string_)
         self.all_graphs = sorted(os.listdir(annotated_path))
-
         self.node_simfunc = node_simfunc
 
         if not node_simfunc is None:
@@ -43,8 +42,8 @@ class V1(Dataset):
         else:
             self.level = None
             self.depth = None
-
-        self.edge_map = edge_map
+        self.tool = tool
+        self.edge_map = GRAPH_KEYS['edge_map'][tool]
         # This is len() so we have to add the +1
         self.num_edge_types = max(self.edge_map.values()) + 1
         print(f"Found {self.num_edge_types} relations")
@@ -59,13 +58,13 @@ class V1(Dataset):
             graph = data['graph']
         else:
             graph = nx.read_gpickle(g_path)
-        graph = nx.to_undirected(graph)
-        one_hot = {edge: torch.tensor(self.edge_map[label]) for edge, label in
-                   (nx.get_edge_attributes(graph, 'label')).items()}
-        nx.set_edge_attributes(graph, name='one_hot', values=one_hot)
 
-        g_dgl = dgl.DGLGraph()
-        g_dgl.from_networkx(nx_graph=graph, edge_attrs=['one_hot'])
+        # Get Edge Labels
+        lw_labels = GRAPH_KEYS['bp_type'][self.tool]
+        one_hot = {edge: torch.tensor(self.edge_map[label]) for edge, label in
+                   (nx.get_edge_attributes(graph, lw_labels)).items()}
+        nx.set_edge_attributes(graph, name='one_hot', values=one_hot)
+        g_dgl = dgl.from_networkx(nx_graph=graph, edge_attrs=['one_hot'])
 
         if self.node_simfunc is not None:
             ring = data['rings'][self.level]
@@ -107,7 +106,7 @@ class Loader():
                  num_workers=20,
                  debug=False,
                  shuffled=False,
-                 edge_map=EDGE_MAP,
+                 tool='RGLIB',
                  node_simfunc=None):
         """
 
@@ -126,7 +125,7 @@ class Loader():
                           debug=debug,
                           shuffled=shuffled,
                           node_simfunc=node_simfunc,
-                          edge_map=edge_map)
+                          tool=tool)
 
         self.node_simfunc = node_simfunc
         self.num_edge_types = self.dataset.num_edge_types
@@ -171,19 +170,18 @@ class InferenceLoader(Loader):
                  annotated_path,
                  batch_size=5,
                  num_workers=20,
-                 edge_map=EDGE_MAP):
+                 tool='RGLIB'):
         super().__init__(
             annotated_path=annotated_path,
             batch_size=batch_size,
             num_workers=num_workers,
-            edge_map=edge_map
+            tool=tool
         )
         self.dataset.all_graphs = list_to_predict
         self.dataset.path = annotated_path
-        print(len(list_to_predict))
 
     def get_data(self):
-        collate_block = collate_wrapper(None)
+        collate_block = collate_wrapper(node_simfunc=None)
         train_loader = DataLoader(dataset=self.dataset,
                                   shuffle=False,
                                   batch_size=self.batch_size,
@@ -202,7 +200,7 @@ def loader_from_hparams(annotated_path, hparams, list_inference=None):
         loader = Loader(annotated_path=annotated_path,
                         batch_size=hparams.get('argparse', 'batch_size'),
                         num_workers=hparams.get('argparse', 'workers'),
-                        edge_map=hparams.get('edges', 'edge_map'),
+                        tool=hparams.get('argparse', 'tool'),
                         node_simfunc=node_simfunc)
         return loader
 
@@ -210,5 +208,5 @@ def loader_from_hparams(annotated_path, hparams, list_inference=None):
                              annotated_path=annotated_path,
                              batch_size=hparams.get('argparse', 'batch_size'),
                              num_workers=hparams.get('argparse', 'workers'),
-                             edge_map=hparams.get('edges', 'edge_map'))
+                             tool=hparams.get('argparse', 'tool'))
     return loader

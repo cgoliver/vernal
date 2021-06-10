@@ -16,7 +16,7 @@ https://docs.dgl.ai/tutorials/models/1_gnn/4_rgcn.html#sphx-glr-tutorials-models
 """
 
 
-def model_from_hparams(hparams, verbose=True):
+def model_from_hparams(hparams, verbose=False):
     """
     Just interfacing to create a model directly from an hparam file
     :param hparams:
@@ -41,7 +41,7 @@ class Embedder(nn.Module):
                  num_bases=-1,
                  conv_output=False,
                  self_loop=False,
-                 verbose=True):
+                 verbose=False):
         super(Embedder, self).__init__()
         self.dims = dims
         self.conv_output = conv_output
@@ -130,7 +130,7 @@ class Model(nn.Module):
                  similarity=True,
                  normalize=False,
                  weighted=False,
-                 verbose=True):
+                 verbose=False):
         """
 
         :param dims: the embeddings dimensions, a list of type [128,128,32]

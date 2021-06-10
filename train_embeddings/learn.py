@@ -113,7 +113,6 @@ def train_model(model, optimizer, train_loader, test_loader, save_path,
 
             # Do the computations for the forward pass
             out = model(graph)
-
             loss = model.rec_loss(embeddings=out,
                                   target_K=K,
                                   graph=graph)

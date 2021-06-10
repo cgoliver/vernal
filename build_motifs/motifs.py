@@ -11,14 +11,16 @@ import networkx as nx
 from tools.graph_utils import whole_graph_from_node
 from tools.graph_utils import has_NC_bfs
 
+
 def def_set():
     return defaultdict(set)
+
 
 def merge_nodesets(maga_graph,
                    maga_adj,
                    singleton,
-                    motif
-                    ):
+                   motif
+                   ):
     """
         For each instance in motif, try to extend it with an edge
         that goes into the singleton cluster.
@@ -45,15 +47,16 @@ def merge_nodesets(maga_graph,
                 pass
             else:
                 # we have a new instance for each connection from
-                    # current motif to singleton
-                    for s in singleton_nodes:
-                        merged = nodeset.union({s})
-                        if len(merged) == len(nodeset):
-                            continue
-                        else:
-                            merged_nodeset.add(nodeset.union({s}))
+                # current motif to singleton
+                for s in singleton_nodes:
+                    merged = nodeset.union({s})
+                    if len(merged) == len(nodeset):
+                        continue
+                    else:
+                        merged_nodeset.add(nodeset.union({s}))
 
     return merged_nodeset
+
 
 def maga_next(maga_graph,
               maga_tree,
@@ -143,7 +146,7 @@ def maga_next(maga_graph,
 
 def maga(mgraph, levels=10):
     print(f">>> Meta-graph has {len(mgraph.graph.nodes())} nodes",
-                f"and {len(mgraph.graph.edges())} edges.")
+          f"and {len(mgraph.graph.edges())} edges.")
     maga_graph = nx.relabel_nodes(mgraph.graph,
                                   {n: ms.FrozenMultiset([n]) for n in mgraph.graph})
 
@@ -176,7 +179,7 @@ def maga(mgraph, levels=10):
             maga_adj[u][mgraph.labels[v]].add(v)
             maga_adj[v][mgraph.labels[u]].add(u)
 
-            for node in (u,v):
+            for node in (u, v):
                 clust = mgraph.labels[node]
                 if boring_clusters[clust]['samples'] < n_boring_samples:
                     boring_clusters[clust]['samples'] += 1
@@ -191,8 +194,8 @@ def maga(mgraph, levels=10):
             maga_graph.nodes[v_node]['node_set'].add(frozenset([v]))
 
     # consider a cluster boring if at at least 80% of instances are boring
-    boring_clusters = {clust for clust, counts in boring_clusters.items()\
-                            if counts['boring'] / counts['samples'] > .8}
+    boring_clusters = {clust for clust, counts in boring_clusters.items() \
+                       if counts['boring'] / counts['samples'] > .8}
 
     print(">>> Doing MAGA.")
     maga_build = maga_next(maga_graph,
@@ -204,10 +207,11 @@ def maga(mgraph, levels=10):
     for l, maga_graph in enumerate(maga_build):
         print("maga level ", l)
         print("maga nodes ", len(maga_graph.nodes()),
-                "maga edges ", len(maga_graph.edges())
-                )
+              "maga edges ", len(maga_graph.edges())
+              )
 
     return maga_graph
+
 
 if __name__ == "__main__":
     pass
