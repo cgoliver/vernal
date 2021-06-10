@@ -17,7 +17,9 @@ import networkx as nx
 from tqdm import tqdm
 
 from tools.graphlet_hash import extract_graphlet, build_hash_table, Hasher
+from config.graph_keys import GRAPH_KEYS
 
+TOOL = 'RGLIB'
 
 def cline():
     """
@@ -101,7 +103,7 @@ def node_2_unordered_rings(G, v, depth=5, hasher=None):
                         children_graphlet.append(hasher.hash(extract_graphlet(G, nei)))
                     else:
                         children_graphlet.append(extract_graphlet(G, nei))
-                    e_labels.append(G[node][nei]['label'])
+                    e_labels.append(G[node][nei][GRAPH_KEYS['bp_type'][TOOL]])
                     visited_edges.add(e_set)
             ring_k.extend(children)
             edge_ring_k.extend(e_labels)

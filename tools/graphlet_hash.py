@@ -31,6 +31,7 @@ from struct import *
 from tools.graph_utils import bfs_expand
 # from tools.rna_ged import ged
 from tools.rna_ged_nx import ged
+from config.graph_keys import GRAPH_KEYS
 
 iso_matrix = pickle.load(open(os.path.join(script_dir, '../data/iso_mat.p'), 'rb'))
 sub_matrix = np.ones_like(iso_matrix) - iso_matrix
@@ -52,7 +53,7 @@ class Hasher:
     def __init__(self, method='WL',
             string_hash_size=8,
             graphlet_hash_size=16,
-            symmetric_edges=True,
+            symmetric_edges=False,
             wl_hops=2):
         self.method = method
         self.string_hash_size = string_hash_size
@@ -104,10 +105,10 @@ def nei_agg(G, n):
     x = tuple(sorted([G.nodes()[n]['label']] + [G.nodes()[n]['label'] for n in G.neighbors(n)]))
     return x
 
-def nei_agg_edges(G, n, node_labels):
+def nei_agg_edges(G, n, node_labels, tool='RGLIB'):
     x = [node_labels[n]]
     for nei in G.neighbors(n):
-        x.append(G[n][nei]['label'] + node_labels[nei])
+        x.append(G[n][nei][GRAPH_KEYS['bp_type'][tool]] + node_labels[nei])
     return ''.join(sorted(x))
 
 

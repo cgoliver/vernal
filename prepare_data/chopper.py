@@ -3,6 +3,7 @@ Chop the PDBs and extract graphs with PCA trick.
 """
 import sys
 import os
+import traceback
 
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -17,7 +18,11 @@ from sklearn.decomposition import PCA
 import networkx as nx
 from Bio.PDB import *
 
-from tools.graph_utils import dangle_trim,gap_fill
+from tools.graph_utils import dangle_trim
+from tools.graph_utils import gap_fill
+from tools.graph_utils import graph_from_pdbid
+from config.graph_keys import GRAPH_KEYS
+
 
 MM_of_Elements = {'H': 1.00794, 'He': 4.002602, 'Li': 6.941, 'Be': 9.012182, 'B': 10.811, 'C': 12.0107, 'N': 14.0067,
                   'O': 15.9994, 'F': 18.9984032, 'Ne': 20.1797, 'Na': 22.98976928, 'Mg': 24.305, 'Al': 26.9815386,
@@ -130,7 +135,9 @@ def blob_to_graph(residues, graph, graph_id):
         for n, d in graph.nodes(data=True):
             chain = str(residue.get_parent().id)
             pos = str(residue.id[1])
-            if (chain, pos) == (str(d['chain']), str(d['pdb_pos'])):
+            g_chain = str(d[GRAPH_KEYS['chain'][TOOL]])
+            g_pos = str(d[GRAPH_KEYS['nt_position'][TOOL]])
+            if (chain, pos) == (g_chain, g_pos):
                 return n
         else:
             return None
@@ -153,7 +160,7 @@ def graph_filter(G, max_nodes=10):
     if len(G.nodes()) < max_nodes:
         return False
     for _, _, d in G.edges(data=True):
-        if d['label'] not in ['CWW', 'B53']:
+        if d[GRAPH_KEYS['bp_type'][TOOL]] not in ['CWW', 'B53']:
             return True
     return False
 
@@ -189,14 +196,17 @@ def compute_one_rna(args):
     :param args: should contain (rna, pdb_path, graph_path,dest)
     :return:
     """
-    (rna, pdb_path, graph_path, dest) = args
+    (rna_graph, pdb_path, graph_path, dest) = args
     parser = MMCIFParser(QUIET=True)
     RNA = {'A', 'U', 'C', 'G'}
 
-    if not rna.endswith('.nx') and rna.startswith('._'):
+    _, graph_format = os.path.splitext(rna_graph)
+    graph_format = graph_format.lstrip('.')
+
+    if not (graph_format in ['nx', 'json']) and rna_graph.startswith('._'):
         return 1
     try:
-        pdbid = rna.split('.')[0]
+        pdbid = rna_graph.split('.')[0]
 
         # Check if already computed
         for processed in os.listdir(dest):
@@ -205,21 +215,29 @@ def compute_one_rna(args):
                 return 0
 
         structure = parser.get_structure('', osp.join(pdb_path, pdbid.lower() + ".cif"))[0]
-        graph = nx.read_gpickle(osp.join(graph_path, pdbid.lower() + ".nx"))
+        graph = graph_from_pdbid(pdbid, graph_path, graph_format=graph_format)
+
         residues = [r for r in structure.get_residues() if r.id[0] == ' ' and
                     r.get_resname() in RNA]
         chops = chop(residues)
         for j, c in enumerate(chops):
-            subgraph = blob_to_graph(c, graph, rna)
+            print("blob to graph")
+            subgraph = blob_to_graph(c, graph, rna_graph)
+            print("blobbed")
+            print("cleaning")
             subgraph = graph_clean(graph, subgraph)
+            print('cleaned')
+            print('filtering')
             if graph_filter(subgraph):
                 nx.write_gpickle(subgraph, osp.join(dest, f"{pdbid}_{j}.nx"))
             else:
                 pass
                 # print(f"Graph {pdbid}_{j} failed graph filter. Had {len(subgraph.nodes())} nodes. " +
                       # f"{set([d['label'] for _, _, d in subgraph.edges(data=True)])}")
+            print("filtered")
         return 0
     except Exception as e:
+        traceback.print_exc()
         print(e)
         return 1
 
@@ -227,10 +245,15 @@ def compute_one_rna(args):
 def all_rna_process(graph_path='../data/carnaval',
                     pdb_path='../data/all_rna_pdb',
                     dest="../data/graphs/whole",
-                    parallel=True):
+                    parallel=True,
+                    graph_format='RGLIB'):
     """
         Chop all the RNAs in the dataset.
+        Each graph in `graph_path` should be in the format `<pdb ID>.[nx|json]`
     """
+
+    global TOOL
+    TOOL = graph_format
 
     graphs = os.listdir(graph_path)
     failed = 0

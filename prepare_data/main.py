@@ -37,8 +37,8 @@ def preprocess_data(name, in_graph='samples_graphs', in_pdb='samples_pdb'):
     script_dir = os.path.dirname(__file__)
     graph_path = os.path.join(script_dir, "../data/graphs/", name)
     annotated_path = os.path.join(script_dir, "../data/annotated/", name)
-    makedir(graph_path, permissive=False)
-    makedir(annotated_path, permissive=False)
+    makedir(graph_path, permissive=True)
+    makedir(annotated_path, permissive=True)
 
     # do the chopping
     all_rna_process(graph_path='data/graphs/' + in_graph,

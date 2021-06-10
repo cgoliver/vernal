@@ -1,10 +1,13 @@
 import sys
+import json
 import pickle
 import os
+import os.path as osp
 import itertools
 
 from tqdm import tqdm
 import networkx as nx
+from networkx.readwrite import json_graph
 import numpy as np
 
 faces = ['W', 'S', 'H']
@@ -19,6 +22,23 @@ annot_dir = os.path.join("..", "data", "annotated", "all_rna_nr")
 if __name__ == "__main__":
     sys.path.append(os.path.join(script_dir, '..'))
 
+from config.graph_keys import GRAPH_KEYS
+
+def load_json(filename):
+    with open(filename, 'r') as f:
+        js_graph = json.load(f)
+    out_graph = json_graph.node_link_graph(js_graph)
+    return out_graph
+
+
+def graph_from_pdbid(pdbid, graph_dir, graph_format='json'):
+    if graph_format == 'nx':
+        graph = nx.read_gpickle(osp.join(graph_dir, pdbid.lower() + '.nx'))
+    elif graph_format == 'json':
+        graph = load_json(osp.join(graph_dir, pdbid.lower() + '.json'))
+    else:
+        raise ValueError(f"Invalid graph format {graph_format}. Use NetworkX or JSON.")
+    return graph
 
 def graph_from_node(node_id,
                     annot_dir=os.path.join(script_dir, '../data/annotated/whole_v4/')):
@@ -282,7 +302,7 @@ def dgl_to_nx(graph, edge_map):
     return g
 
 
-def bfs_expand(G, initial_nodes, nc_block=False, depth=2):
+def bfs_expand(G, initial_nodes, nc_block=False, depth=2, tool='RGLIB'):
     """
         Extend motif graph starting with motif_nodes.
         Returns list of nodes.
@@ -295,7 +315,7 @@ def bfs_expand(G, initial_nodes, nc_block=False, depth=2):
         for n in total_nodes[d]:
             for nei in G.neighbors(n):
                 depth_ring.append(nei)
-                e_labels.add(G[n][nei]['label'])
+                e_labels.add(G[n][nei][GRAPH_KEYS['bp_type'][tool]])
         if e_labels.issubset({'CWW', 'B53', ''}) and nc_block:
             break
         else:
