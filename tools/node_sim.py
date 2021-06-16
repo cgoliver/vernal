@@ -658,7 +658,7 @@ if __name__ == "__main__":
 
     # value = hungarian(ring1, ring1, 3)
     # print(value)
-    graph_path = os.path.join("..", "data", "annotated", "whole_v4")
+    graph_path = os.path.join("..", "data", "annotated", "glib_sample")
     graphs = os.listdir(graph_path)
     data1 = pickle.load(open(os.path.join(graph_path, graphs[0]), 'rb'))
     data2 = pickle.load(open(os.path.join(graph_path, graphs[1]), 'rb'))
@@ -670,7 +670,7 @@ if __name__ == "__main__":
     # simfunc_hung = SimFunctionNode('hungarian', 2, hash_init='whole_v3')
     # simfunc_iso = SimFunctionNode('R_iso', 2, hash_init='whole_v3', idf=True)
     # simfunc_graphlet = SimFunctionNode('graphlet', 2, hash_init='whole_v3')
-    simfunc_graphlet = SimFunctionNode('R_graphlets', 2, hash_init='whole_v4')
+    simfunc_graphlet = SimFunctionNode('R_graphlets', 2, hash_init='glib_sample')
 
     for node1, ring1 in rings1.items():
         for node2, ring2 in rings2.items():
