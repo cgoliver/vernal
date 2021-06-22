@@ -44,6 +44,11 @@ MM_of_Elements = {'H': 1.00794, 'He': 4.002602, 'Li': 6.941, 'Be': 9.012182, 'B'
                   'Ds': 281, 'Rg': 281, 'Cn': 285, 'Nh': 284, 'Fl': 289, 'Mc': 289, 'Lv': 292, 'Ts': 294, 'Og': 294,
                   'ZERO': 0}
 
+def residue_from_node(structure, chain, pos):
+    for r in structure.residues():
+        if r.get_parent().id == chain and r.id[1] == pos:
+            return r
+
 def block_pca(residues):
     """
         Get PCA of coordinates in block.
@@ -217,8 +222,14 @@ def compute_one_rna(args):
         structure = parser.get_structure('', osp.join(pdb_path, pdbid.lower() + ".cif"))[0]
         graph = graph_from_pdbid(pdbid, graph_path, graph_format=graph_format)
 
-        residues = [r for r in structure.get_residues() if r.id[0] == ' ' and
-                    r.get_resname() in RNA]
+
+        residues = list(map(residue_from_node, graph.nodes()))
+
+        # glib node format: 3iab.R.83 <pdbid>.<chain>.<pos>
+
+        # residues = [r for r in structure.get_residues() if r.id[0] == ' ' and
+                    # r.get_resname() in RNA]
+
         chops = chop(residues)
         for j, c in enumerate(chops):
             print("blob to graph")
