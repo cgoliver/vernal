@@ -1,6 +1,4 @@
-import csv
 import numpy as np
-
 from graph_keys import EDGE_MAP_RGLIB
 
 s = """
@@ -34,19 +32,11 @@ s2 = """8.9,12,14.7,14,13.7,12.7,15.1,14.7,16.2,16.6,16.2,14,19
 14,11.4,15.5,15.8,17.7,19,10.8,14.9,13.4,14.4,9,4,19
 19,19,19,19,19,19,19,19,19,19,19,19,0
 """
-#
-# lines = s.splitlines()
-# reader = csv.reader(lines)
-# print(reader)
-# parsed_csv = list(reader)
-# print(parsed_csv)
-
 
 lines = s2.splitlines()
 matrix = list()
 for line in lines:
     matrix.append(line.split(','))
-
 matrix = np.asarray(matrix)
 matrix = np.asarray(matrix, dtype=float)
 matrix = np.exp(-matrix / 8)
@@ -61,11 +51,6 @@ def get_undirected_iso(bpa, bpb):
     bpa = bpa if bpa in keys else bpa[0] + bpa[2] + bpa[1]
     bpb = bpb if bpb in keys else bpb[0] + bpb[2] + bpb[1]
     return matrix[key_map[bpa], key_map[bpb]]
-
-
-iso1 = get_undirected_iso('cWW', 'cHS')
-iso2 = get_undirected_iso('cWW', 'cWW')
-iso2 = get_undirected_iso('cWW', 'cWW')
 
 
 def build_iso():
