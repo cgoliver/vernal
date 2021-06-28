@@ -59,6 +59,11 @@ class V1(Dataset):
         else:
             graph = nx.read_gpickle(g_path)
 
+        # edges = graph.edges()
+        # for nodea,nodeb in edges:
+        #     if not (nodeb, nodea) in edges:
+        #         print(nodea, nodeb)
+
         # Get Edge Labels
         lw_labels = GRAPH_KEYS['bp_type'][self.tool]
         one_hot = {edge: torch.tensor(self.edge_map[label]) for edge, label in

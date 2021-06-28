@@ -25,9 +25,9 @@ from config.graph_keys import *
 
 # GLOBAL VARIABLES
 
-iso_matrix = pickle.load(open(os.path.join(script_dir, '../data/iso_mat.p'), 'rb'))
+# iso_matrix = pickle.load(open(os.path.join(script_dir, '../data/iso_mat.p'), 'rb'))
 # iso_matrix_ged = iso_matrix
-iso_matrix = iso_matrix[1:, 1:]
+# iso_matrix = iso_matrix[1:, 1:]
 
 
 # indel_vector = [1 if e == 'B53' else 2 if e == 'CWW' else 3 for e in sorted(EDGE_MAP_FR3D.keys())]

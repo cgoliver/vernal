@@ -14,7 +14,12 @@ if __name__ == "__main__":
 from tools.ged_nx import graph_edit_distance
 from tools.ged_nx import optimize_graph_edit_distance
 
-iso_matrix = pickle.load(open(os.path.join(script_dir, '../data/iso_mat.p'), 'rb'))
+from config.build_iso_mat import iso_mat as iso_matrix
+from config.graph_keys import EDGE_MAP_RGLIB as edge_map
+from config.graph_keys import GRAPH_KEYS
+
+e_key = GRAPH_KEYS['bp_type']['RGLIB']
+
 sub_matrix = np.ones_like(iso_matrix) - iso_matrix
 
 #matching backbone to non-backbone infty cost
@@ -23,27 +28,23 @@ sub_matrix = np.ones_like(iso_matrix) - iso_matrix
 
 # sns.heatmap(sub_matrix)
 # plt.show()
-sub_matrix[0,1:] = sys.maxsize
-sub_matrix[1:,0] = sys.maxsize
+# sub_matrix[0,1:] = sys.maxsize
+# sub_matrix[1:,0] = sys.maxsize
 
 # iso_matrix = iso_matrix[1:, 1:]
 
-
-edge_map = {'B53': 0, 'CHH': 1, 'CHS': 2, 'CHW': 3, 'CSH': 2, 'CSS': 4, 'CSW': 5, 'CWH': 3, 'CWS': 5, 'CWW': 6,
-            'THH': 7, 'THS': 8, 'THW': 9, 'TSH': 8, 'TSS': 10, 'TSW': 11, 'TWH': 9, 'TWS': 11, 'TWW': 12}
-
-indel_vector = [1 if e == 'B53' else 2 if e == 'CWW' else 3 for e in sorted(edge_map.keys())]
+indel_vector = [1 if e[0] == 'B' else 2 if e == 'CWW' else 3 for e in sorted(edge_map.keys())]
 
 
 def e_sub(e1_attr, e2_attr):
-    return sub_matrix[edge_map[e1_attr['label']]][edge_map[e2_attr['label']]]
+    return sub_matrix[edge_map[e1_attr[e_key]]][edge_map[e2_attr[e_key]]]
 
 def e_ins(e_attr):
-    return indel_vector[edge_map[e_attr['label']]]
+    return indel_vector[edge_map[e_attr[e_key]]]
     pass
 
 def e_del(e_attr):
-    return indel_vector[edge_map[e_attr['label']]]
+    return indel_vector[edge_map[e_attr[e_key]]]
     pass
 
 def n_ins(arg):
@@ -85,7 +86,7 @@ if __name__ == "__main__":
         return node, subG
 
 
-    graph_path = os.path.join("..", "data", "annotated", "whole_v3")
+    graph_path = os.path.join("..", "data", "annotated", "glib_sample")
     graphs = os.listdir(graph_path)
     G = pickle.load(open(os.path.join(graph_path, graphs[0]), 'rb'))['graph']
     H = pickle.load(open(os.path.join(graph_path, graphs[0]), 'rb'))['graph']

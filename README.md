@@ -74,7 +74,7 @@ Save the crystal structures (first link) to the `data/` folder.
 
 Save the whole graphs (second link) to the `data/graphs` folder.
 
-Bulid the dataset. This will take some time as it involves loading many large PDB files.
+Build the dataset. This will take some time as it involves loading many large PDB files.
 
 
 ```

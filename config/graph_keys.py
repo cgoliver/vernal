@@ -9,9 +9,11 @@ IDF = {'TSS': 1.3508944643423815, 'TWW': 2.2521850545837103, 'CWW': 0.7302387734
        'CHS': 1.6543492684466312, 'THW': 1.3619066730630602, 'TWH': 1.3619066730630602, 'THH': 2.3624726636947186,
        'CWH': 2.220046456989285, 'CHW': 2.220046456989285, 'TSW': 2.3588208814802263, 'TWS': 2.3588208814802263,
        'CWS': 2.0236918714028707, 'CHH': 4.627784875752877, 'CSW': 2.0236918714028707}
+IDF_RGLIB = {key[0].lower() + key[1:]: value for key, value in IDF.items()}
 
 GRAPH_KEYS = {'nt_position': {'RGLIB': 'nt_resnum', 'FR3D': 'pdb_pos'},
               'chain': {'RGLIB': 'chain_name', 'FR3D': 'chain'},
               'bp_type': {'RGLIB': 'LW', 'FR3D': 'label'},
               'edge_map': {'RGLIB': EDGE_MAP_RGLIB, 'FR3D': EDGE_MAP_FR3D},
+              'idf': {'RGLIB': IDF_RGLIB, 'FR3D': IDF},
               }
