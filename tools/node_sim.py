@@ -22,6 +22,8 @@ if __name__ == "__main__":
 # from tools.drawing import rna_draw_pair
 from tools.graphlet_hash import *
 from config.graph_keys import *
+from config.build_iso_mat import iso_mat as iso_matrix
+
 
 # GLOBAL VARIABLES
 
@@ -93,8 +95,7 @@ class SimFunctionNode():
                 pickle.load(open(init_path, 'rb'))
 
         if idf:
-            global IDF
-            self.idf = IDF
+            self.idf = GRAPH_KEYS['idf'][tool]
         else:
             self.idf = None
 
@@ -266,20 +267,16 @@ class SimFunctionNode():
 
             return (loc_min / loc_max) ** 1.5
 
-        def exp_dist(count1, count2):
-            """Exponentially weighted but does not depend on lengths"""
-            diff_bb = abs(- feat_2['B53'])
-            return np.exp(-diff_bb)
-
-        # sim_bb = exp_dist(feat_1['B53'], feat_2['B53'])
-        sim_bb = R_1_like_bb(feat_1['B53'], feat_2['B53'])
+        sim_bb_53 = R_1_like_bb(feat_1['B53'], feat_2['B53'])
+        sim_bb_35 = R_1_like_bb(feat_1['B35'], feat_2['B35'])
+        sim_bb = (sim_bb_53 + sim_bb_35) / 2
 
         # === Then deal with NC ===
 
         # On average the edge rings only have 0.68 edges that are not BB
         # Therefore bruteforcing is acceptable
-        nc_list1 = [i for i in list1 if i != 'B53']
-        nc_list2 = [i for i in list2 if i != 'B53']
+        nc_list1 = [i for i in list1 if i not in ['B53', 'B35']]
+        nc_list2 = [i for i in list2 if i not in ['B53', 'B35']]
 
         def compare_smooth(ring1, ring2):
             """
@@ -425,7 +422,7 @@ class SimFunctionNode():
             can, noncan = [], []
             for k in range(1, depth + 1):
                 for value in rings[k]:
-                    if value == 'B53':
+                    if value in ['B53', 'B35']:
                         can.append((value, k))
                     else:
                         noncan.append((value, k))
@@ -649,16 +646,9 @@ def simfunc_time(simfuncs, graph_path, batches=1, batch_size=5,
 
 if __name__ == "__main__":
     pass
-    # k_block_all("../data/chunks_nx_annot", "../data/test_sim")
-    # a = [[None], ['CWW', 'B53', 'B53'], ['B53', 'B53', 'B53'], ['B53', 'B53'], ['B53'], ['CWW', 'B53']]
-    # ring1 = [[None], ['B53', 'B53', 'CSS'], ['B53', 'B53'], ['THW', 'B53'], ['B53', 'B53', 'B35']]
-    # simfunc = SimFunctionNode(method='R_1', idf=False, depth=3, decay=0.8, normalization='sqrt')
-    # k = simfunc.compare(ring1, ring1)
-    # print(k)
 
-    # value = hungarian(ring1, ring1, 3)
-    # print(value)
-    graph_path = os.path.join("..", "data", "annotated", "glib_sample")
+    graph_path = os.path.join("..", "data", "annotated", "glib_nr_annot")
+    # graph_path = os.path.join("..", "data", "annotated", "glib_sample")
     graphs = os.listdir(graph_path)
     data1 = pickle.load(open(os.path.join(graph_path, graphs[0]), 'rb'))
     data2 = pickle.load(open(os.path.join(graph_path, graphs[1]), 'rb'))
@@ -666,19 +656,19 @@ if __name__ == "__main__":
     H, rings2 = data2['graph'], data2['rings']['graphlet']
     # G, rings1 = data1['graph'], data1['rings']['edge']
     # H, rings2 = data2['graph'], data2['rings']['edge']
-    # simfunc_r1 = SimFunctionNode('R_1', 2)
-    # simfunc_hung = SimFunctionNode('hungarian', 2, hash_init='whole_v3')
-    # simfunc_iso = SimFunctionNode('R_iso', 2, hash_init='whole_v3', idf=True)
-    # simfunc_graphlet = SimFunctionNode('graphlet', 2, hash_init='whole_v3')
-    simfunc_graphlet = SimFunctionNode('R_graphlets', 2, hash_init='glib_sample')
-
+    simfunc_r1 = SimFunctionNode('R_1', 2)
+    simfunc_hung = SimFunctionNode('hungarian', 2)
+    simfunc_iso = SimFunctionNode('R_iso', 2, idf=True)
+    simfunc_r_graphlet = SimFunctionNode('R_graphlets', 2, hash_init='glib_nr_annot')
+    simfunc_graphlet = SimFunctionNode('graphlet', 2, hash_init='glib_nr_annot')
+    simfunc = simfunc_graphlet
     for node1, ring1 in rings1.items():
         for node2, ring2 in rings2.items():
-            a = simfunc_graphlet.compare(ring1, ring2)
-            b = simfunc_graphlet.compare(ring1, ring1)
-            # a = simfunc_r1.compare(ring1, ring2)
-            # b = simfunc_r1.compare(ring1, ring1)
-            # print(a)
+            a = simfunc.compare(ring1, ring2)
+            b = simfunc.compare(ring1, ring1)
+            print(a)
+            print(b)
+
 
     # ring1 = list(rings1.values())[0]
     # print(simfunc_iso.compare(ring1, ring1))

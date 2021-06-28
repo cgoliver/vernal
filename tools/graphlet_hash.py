@@ -33,28 +33,28 @@ from tools.graph_utils import bfs_expand
 from tools.rna_ged_nx import ged
 from config.graph_keys import GRAPH_KEYS
 
-iso_matrix = pickle.load(open(os.path.join(script_dir, '../data/iso_mat.p'), 'rb'))
-sub_matrix = np.ones_like(iso_matrix) - iso_matrix
+# iso_matrix = pickle.load(open(os.path.join(script_dir, '../data/iso_mat.p'), 'rb'))
+# sub_matrix = np.ones_like(iso_matrix) - iso_matrix
 # iso_matrix = iso_matrix[1:, 1:]
+# edge_map = {'B53': 0, 'CHH': 1, 'CHS': 2, 'CHW': 3, 'CSH': 2, 'CSS': 4, 'CSW': 5, 'CWH': 3, 'CWS': 5, 'CWW': 6,
+#             'THH': 7, 'THS': 8, 'THW': 9, 'TSH': 8, 'TSS': 10, 'TSW': 11, 'TWH': 9, 'TWS': 11, 'TWW': 12}
+edge_map = GRAPH_KEYS['edge_map']['RGLIB']
+indel_vector = [1 if e in ['B53', 'B35'] else 2 if e == 'CWW' else 3 for e in sorted(edge_map.keys())]
 
 
-edge_map = {'B53': 0, 'CHH': 1, 'CHS': 2, 'CHW': 3, 'CSH': 2, 'CSS': 4, 'CSW': 5, 'CWH': 3, 'CWS': 5, 'CWW': 6,
-            'THH': 7, 'THS': 8, 'THW': 9, 'TSH': 8, 'TSS': 10, 'TSW': 11, 'TWH': 9, 'TWS': 11, 'TWW': 12}
-
-indel_vector = [1 if e == 'B53' else 2 if e == 'CWW' else 3 for e in sorted(edge_map.keys())]
-
-faces = ['W', 'S', 'H']
-orientations = ['C', 'T']
-labels = {orient + e1 + e2 for e1, e2 in product(faces, faces) for orient in orientations}
-labels.add('B53')
+# faces = ['W', 'S', 'H']
+# orientations = ['C', 'T']
+# labels = {orient + e1 + e2 for e1, e2 in product(faces, faces) for orient in orientations}
+# labels.add('B53')
+# labels = list(edge_map.keys())
 
 
 class Hasher:
     def __init__(self, method='WL',
-            string_hash_size=8,
-            graphlet_hash_size=16,
-            symmetric_edges=False,
-            wl_hops=2):
+                 string_hash_size=8,
+                 graphlet_hash_size=16,
+                 symmetric_edges=False,
+                 wl_hops=2):
         self.method = method
         self.string_hash_size = string_hash_size
         self.graphlet_hash_size = graphlet_hash_size
@@ -78,10 +78,10 @@ class Hasher:
         True
         """
         if self.symmetric_edges:
-            for u,v in G.edges():
+            for u, v in G.edges():
                 label = G[u][v]['label']
                 if label != 'B53':
-                    prefix, suffix = label[0],label[1:]
+                    prefix, suffix = label[0], label[1:]
                     G[u][v]['label'] = prefix + "".join(sorted(suffix))
         items = []
         node_labels = {n: '' for n in G.nodes()}
@@ -101,9 +101,11 @@ class Hasher:
         h.update(str(tuple(items)).encode('ascii'))
         return h.hexdigest()
 
+
 def nei_agg(G, n):
     x = tuple(sorted([G.nodes()[n]['label']] + [G.nodes()[n]['label'] for n in G.neighbors(n)]))
     return x
+
 
 def nei_agg_edges(G, n, node_labels, tool='RGLIB'):
     x = [node_labels[n]]
@@ -127,6 +129,7 @@ def WL_step_edges(G, labels):
         new_labels[n] = nei_agg_edges(G, n, labels)
     return new_labels
 
+
 def extract_graphlet(G, n, size=1):
     return G.subgraph(bfs_expand(G, [n], depth=size)).copy()
     pass
@@ -149,7 +152,6 @@ def build_hash_table(graph_dir, hasher, graphlets=True,
             G = pickle.load(open(os.path.join(graph_dir, g), 'rb'))['graph']
         else:
             G = pickle.load(open(os.path.join(graph_dir, g), 'rb'))
-
 
         if graphlets:
             todo = (extract_graphlet(G, n, size=graphlet_size) for n in G.nodes())
@@ -199,11 +201,10 @@ def GED_hashtable_hashed(h_G, h_H, GED_table, graphlet_table, normed=True,
         G = h_G
         H = h_H
 
-
-    distance = ged(G,H, timeout=timeout)
+    distance = ged(G, H, timeout=timeout)
     # d = ged(G, H, sub_matrix=sub_matrix,
-            # edge_map=edge_map,
-            # indel=indel_vector)
+    # edge_map=edge_map,
+    # indel=indel_vector)
     # distance = d.cost
 
     # This is added by vincent, to use to be closer from the rest of the framework riso
@@ -222,7 +223,6 @@ def GED_hashtable_hashed(h_G, h_H, GED_table, graphlet_table, normed=True,
     if not GED_table is None:
         GED_table[h_G][h_H] = distance
     return distance
-
 
 
 def hash_analyze(annot_dir):
@@ -299,12 +299,13 @@ def graphlet_distribution(hash_table):
 
 if __name__ == "__main__":
     import doctest
+
     doctest.testmod()
     table = build_hash_table("../data/annotated/whole_v3", Hasher(), mode='append', max_graphs=10)
-    #check hashtable visually
+    # check hashtable visually
     from tools.drawing import rna_draw
-    for h,data in table.items():
+
+    for h, data in table.items():
         print(h)
         for g in data['graphs']:
             rna_draw(g, show=True)
-
