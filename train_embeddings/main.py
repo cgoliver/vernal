@@ -107,7 +107,7 @@ if function == 'train':
                          path_to_ini=args.ini,
                          argparse=args)
     edge_map = GRAPH_KEYS['edge_map'][args.tool]
-    idf = IDF
+    idf = GRAPH_KEYS['idf'][args.tool]
     hparams.add_value('edges', 'edge_frequencies', idf)
     hparams.add_value('edges', 'edge_map', edge_map)
     hparams.add_value('argparse', 'num_edge_types', len(edge_map))

@@ -235,7 +235,6 @@ class Model(nn.Module):
             assert graph is not None
             import networkx as nx
             nx_graph = graph.to_networkx(edge_attrs=['one_hot'])
-            nx_graph = nx.to_undirected(nx_graph)
             ordered = sorted(nx_graph.nodes())
             adj_matrix_full = nx.to_scipy_sparse_matrix(nx_graph, nodelist=ordered)
 
@@ -245,7 +244,6 @@ class Model(nn.Module):
             extracted_graph = nx.Graph()
             extracted_graph.add_nodes_from(ordered)
             extracted_graph.add_edges_from(extracted_edges)
-            extracted_graph = nx.to_undirected(extracted_graph)
             adj_matrix_small = nx.to_scipy_sparse_matrix(extracted_graph, nodelist=ordered)
 
             # This is a matrix with non zero entries for non canonical relationships

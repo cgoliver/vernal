@@ -144,7 +144,6 @@ def inference_on_graph(model,
     """
         Do inference on one networkx graph.
     """
-    graph = nx.to_undirected(graph)
     one_hot = {edge: torch.tensor(edge_map[label]) for edge, label in
                (nx.get_edge_attributes(graph, 'label')).items()}
     nx.set_edge_attributes(graph, name='one_hot', values=one_hot)
@@ -349,13 +348,14 @@ def predict(model,
                 G = fetch_graph(g_path)
 
                 assert n_nodes == len(G.nodes())
+                # Here we need to sort the nodes on the ids because of DGL reordering,
+                #   so get_nc_nodes_index performs sorting
                 if nc_only:
                     keep_indices = get_nc_nodes_index(G)
                 keep_Z_indices.extend([ind + offset for ind in keep_indices])
 
                 rep = [(all_graphs[graph_index], node_index)
                        for node_index in keep_indices]
-
                 g_inds.extend(rep)
 
                 g_nodes = sorted(G.nodes())
@@ -384,7 +384,7 @@ def predict(model,
     return {'Z': Z,
             'node_to_gind': g_inds,
             'node_to_zind': node_map,
-            'ind_to_node': node_map_r,
+            'zind_to_node': node_map_r,
             'node_id_list': node_ids
             }
 

@@ -40,6 +40,7 @@ from config.graph_keys import GRAPH_KEYS
 #             'THH': 7, 'THS': 8, 'THW': 9, 'TSH': 8, 'TSS': 10, 'TSW': 11, 'TWH': 9, 'TWS': 11, 'TWW': 12}
 edge_map = GRAPH_KEYS['edge_map']['RGLIB']
 indel_vector = [1 if e in ['B53', 'B35'] else 2 if e == 'CWW' else 3 for e in sorted(edge_map.keys())]
+# indel_vector = [1 if e == 'B53' else 2 if e == 'CWW' else 3 for e in sorted(edge_map.keys())]
 
 
 # faces = ['W', 'S', 'H']

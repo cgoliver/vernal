@@ -188,7 +188,7 @@ def graph_clean(G, subG, thresh=8):
     dangle_trim(subG)
     assert sum([1 if subG.degree(n) == 1 else 0 for n in subG.nodes()]) == 0
 
-    for cc in nx.connected_components(subG.to_undirected()):
+    for cc in nx.connected_components(subG):
         if len(cc) < thresh:
             subG.remove_nodes_from(cc)
             # print('removed chunk')

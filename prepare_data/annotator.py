@@ -70,8 +70,6 @@ def node_2_unordered_rings(G, v, depth=5, hasher=None):
     [[None], ['A', 'B'], ['C', 'A']]
 
     """
-    G = G.to_undirected()
-
     do_hash = not hasher is None
 
     if do_hash:

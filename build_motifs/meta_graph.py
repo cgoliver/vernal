@@ -104,7 +104,7 @@ class MGraph:
         """
         Start with a motif representative : a list of nodes that make motif.
         Build the query graph :
-         -Create embeddings for the motif nodes, they need the whole graph. then do clustering and put query nodes
+        - Create embeddings for the motif nodes, they need the whole graph. then do clustering and put query nodes
          in the appropriate cluster. Then add the edges that make up the connectivity of the query motif
         - Then add all nodes in a cluster that is part of the query graph in a big motif_instance set
         - Then Follow the query graph edges and connect these instances
@@ -427,8 +427,7 @@ class MGraphNC(MGraph):
                                          )
 
         self.node_map = model_output['node_to_zind']
-        self.reversed_node_map = {value: key for key, value in self.node_map.items()}
-
+        self.reversed_node_map = model_output['zind_to_node']
         Z = model_output['Z']
         # self.Z = Z
 
@@ -437,7 +436,7 @@ class MGraphNC(MGraph):
         nc_edges = set()
         for graph_name in os.listdir(self.graph_dir)[:max_graphs]:
             graph_path = os.path.join(self.graph_dir, graph_name)
-            g = pickle.load(open(graph_path, 'rb'))['graph'].to_undirected()
+            g = pickle.load(open(graph_path, 'rb'))['graph']
             local_nodes = set()
             for source, target, label in g.edges(data='label'):
                 if label not in ['CWW', 'B53']:
@@ -600,7 +599,7 @@ class MGraphAll(MGraph):
 
         Z = model_output['Z']
         self.node_map = model_output['node_to_zind']
-        self.reversed_node_map = model_output['ind_to_node']
+        self.reversed_node_map = model_output['zind_to_node']
 
         print(len(Z))
 
@@ -658,7 +657,7 @@ class MGraphAll(MGraph):
         for graph_name in os.listdir(self.graph_dir)[:max_graphs]:
             graph_path = os.path.join(self.graph_dir, graph_name)
             g = fetch_graph(graph_path)
-            g = g.to_undirected()
+            g = g
             for start_node, end_node in g.edges():
                 # Get edges id
                 if start_node not in self.node_map:
