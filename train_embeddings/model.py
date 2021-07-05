@@ -1,3 +1,5 @@
+import sys
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -22,11 +24,11 @@ def model_from_hparams(hparams, verbose=False):
     :param hparams:
     :return:
     """
-    num_rels = hparams.get('argparse', 'num_edge_types')
     model = Model(dims=hparams.get('argparse', 'embedding_dims'),
                   self_loop=hparams.get('argparse', 'self_loop'),
                   conv_output=hparams.get('argparse', 'conv_output'),
-                  num_rels=num_rels,
+                  num_rels=hparams.get('argparse', 'num_edge_types'),
+                  weighted=hparams.get('argparse', 'weighted'),
                   num_bases=-1,
                   similarity=hparams.get('argparse', 'similarity'),
                   verbose=verbose)
@@ -239,8 +241,14 @@ class Model(nn.Module):
             adj_matrix_full = nx.to_scipy_sparse_matrix(nx_graph, nodelist=ordered)
 
             # copy the matrix with only the non canonical
+            # extracted_edges = [(u, v) for u, v, e in nx_graph.edges.data('one_hot', default='0')
+            #                    if e not in [0, 6]]
+
+            # Directed version :
+            # B53 : 0, cWW : 9, B35:19
             extracted_edges = [(u, v) for u, v, e in nx_graph.edges.data('one_hot', default='0')
-                               if e not in [0, 6]]
+                               if e not in [0, 19, 9]]
+
             extracted_graph = nx.Graph()
             extracted_graph.add_nodes_from(ordered)
             extracted_graph.add_edges_from(extracted_edges)
