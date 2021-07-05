@@ -45,7 +45,7 @@ def caller(graph_path=os.path.join(script_dir, '../data/samples_v2'), annot_id='
     pass
 
 
-def node_2_unordered_rings(G, v, depth=5, hasher=None):
+def node_2_unordered_rings(G, v, depth=5, hasher=None, hash_table=None):
     """
     Return rings centered at `v` up to depth `depth`.
 
@@ -73,7 +73,9 @@ def node_2_unordered_rings(G, v, depth=5, hasher=None):
     do_hash = not hasher is None
 
     if do_hash:
-        graphlet_rings = [[hasher.hash(extract_graphlet(G, v))]]
+        g_hash = hasher.hash(extract_graphlet(G, v))
+        assert g_hash in hash_table
+        graphlet_rings = [[g_hash]]
     else:
         graphlet_rings = [[extract_graphlet(G, v)]]
 
@@ -98,7 +100,9 @@ def node_2_unordered_rings(G, v, depth=5, hasher=None):
                 e_set = frozenset([node, nei])
                 if e_set not in visited_edges:
                     if do_hash:
-                        children_graphlet.append(hasher.hash(extract_graphlet(G, nei)))
+                        nei_h = hasher.hash(extract_graphlet(G, nei))
+                        assert nei_h in hash_table
+                        children_graphlet.append(nei_h)
                     else:
                         children_graphlet.append(extract_graphlet(G, nei))
                     e_labels.append(G[node][nei][GRAPH_KEYS['bp_type'][TOOL]])
@@ -116,14 +120,18 @@ def node_2_unordered_rings(G, v, depth=5, hasher=None):
     return {'node': node_rings, 'edge': edge_rings, 'graphlet': graphlet_rings}
 
 
-def build_ring_tree_from_graph(graph, depth=5, hasher=None):
+def build_ring_tree_from_graph(graph, depth=5, hasher=None, hash_table=None):
     """
     :param graph: nx
     :return: dict (ring_level: node: ring)
     """
     dict_ring = defaultdict(dict)
     for node in sorted(graph.nodes()):
-        rings = node_2_unordered_rings(graph, node, depth=depth, hasher=hasher)
+        rings = node_2_unordered_rings(graph,
+                                       node,
+                                       depth=depth,
+                                       hasher=hasher,
+                                       hash_table=hash_table)
         dict_ring['node'][node] = rings['node']
         dict_ring['edge'][node] = rings['edge']
         dict_ring['graphlet'][node] = rings['graphlet']
@@ -137,7 +145,7 @@ def annotate_one(args):
     :param args: ( g (name of the graph),
     :return:
     """
-    g, graph_path, dump_path, hasher, re_annotate = args
+    g, graph_path, dump_path, hasher, re_annotate, hash_table = args
     try:
         dump_name = os.path.basename(g).split('.')[0] + "_annot.p"
         dump_full = os.path.join(dump_path, dump_name)
@@ -148,7 +156,10 @@ def annotate_one(args):
             graph = pickle.load(open(os.path.join(graph_path, g), 'rb'))['graph']
         else:
             graph = nx.read_gpickle(os.path.join(graph_path, g))
-        rings = build_ring_tree_from_graph(graph, depth=5, hasher=hasher)
+        rings = build_ring_tree_from_graph(graph,
+                                           depth=5,
+                                           hasher=hasher,
+                                           hash_table=hash_table)
 
         if dump_path:
             pickle.dump({'graph': graph,
@@ -203,7 +214,7 @@ def annotate_all(dump_path='../data/annotated/sample_v2',
     pool = mlt.Pool()
     if parallel:
         print(">>> going parallel")
-        arguments = [(g, graph_path, dump_path, hasher, re_annotate) for g in graphs]
+        arguments = [(g, graph_path, dump_path, hasher, re_annotate, hash_table) for g in graphs]
         for res in tqdm(pool.imap_unordered(annotate_one, arguments), total=len(graphs)):
             if res[0]:
                 failed += 1
@@ -211,7 +222,7 @@ def annotate_all(dump_path='../data/annotated/sample_v2',
         print(f'failed on {(failed)} on {len(graphs)}')
         return failed
     for graph in tqdm(graphs, total=len(graphs)):
-        res = annotate_one((graph, graph_path, dump_path, hasher, re_annotate))
+        res = annotate_one((graph, graph_path, dump_path, hasher, re_annotate, hash_table))
         if res[0]:
             failed += 1
             print(f'failed on {graph}, this is the {failed}-th one on {len(graphs)}')
