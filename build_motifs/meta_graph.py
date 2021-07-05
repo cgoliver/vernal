@@ -26,12 +26,13 @@ from tools.graph_utils import bfs_expand, graph_from_node, fetch_graph
 from tools.clustering import *
 from tools.rna_ged_nx import ged
 
-
 import seaborn as sns
 from tools.drawing import rna_draw
 
+
 def def_set():
     return defaultdict(set)
+
 
 class MGraph:
     """
@@ -72,7 +73,6 @@ class MGraph:
             graph_id = node_id[0]
             graphsets[graph_id].append(s)
         return graphsets
-
 
     def prune(self):
         """
@@ -372,7 +372,6 @@ class MGraph:
                 motifs_instances_grouped[node_to_pdbid(new_one)].add(new_one)
         return motifs_instances
 
-
     def statistics(self):
         """
         Computes statistics over the mnodes and medges occupancy
@@ -389,6 +388,7 @@ class MGraph:
             edge_counts.append(len(edge_set))
 
         return node_counts, edge_counts
+
 
 class MGraphNC(MGraph):
     """
@@ -439,7 +439,7 @@ class MGraphNC(MGraph):
             g = pickle.load(open(graph_path, 'rb'))['graph']
             local_nodes = set()
             for source, target, label in g.edges(data='label'):
-                if label not in ['CWW', 'B53']:
+                if label not in ['cWW', 'B53', 'B35']:
                     local_nodes.add((source, self.node_map[source]))
                     local_nodes.add((target, self.node_map[target]))
             for source, sid in local_nodes:
@@ -539,7 +539,7 @@ class MGraphNC(MGraph):
         # query_graph = nx.Graph()
         # We have to add the nodes that pass the selection criterion and are in kept clusters
         for source, target, label in nx_motif.edges(data='label'):
-            if label not in ['CWW', 'B53']:
+            if label not in ['cWW', 'B53', 'B35']:
                 source_clust = motif_clust_map[source]
                 if source_clust in self.graph.nodes():
                     query_nodes.add((source, source_clust))
@@ -586,7 +586,7 @@ class MGraphAll(MGraph):
         self.clust_algo = clust_algo
 
         # Edges parameters
-        self.bb_only= bb_only
+        self.bb_only = bb_only
         self.min_edge = min_edge
 
         # BUILD MNODES
@@ -601,7 +601,7 @@ class MGraphAll(MGraph):
         self.node_map = model_output['node_to_zind']
         self.reversed_node_map = model_output['zind_to_node']
 
-        print(len(Z))
+        print(f'The size of the embeddings tensor is{len(Z)}. It should be equal to the total number of nodes.')
 
         clust_info = cluster(Z,
                              algo=clust_algo,
@@ -664,7 +664,7 @@ class MGraphAll(MGraph):
                     continue
                 if end_node not in self.node_map:
                     continue
-                if self.bb_only and g[start_node][end_node]['label'] != 'B53':
+                if self.bb_only and g[start_node][end_node]['label'] not in {'B53', 'B35'}:
                     continue
 
                 start_id, end_id = self.node_map[start_node], self.node_map[end_node]
@@ -724,14 +724,14 @@ class MGraphAll(MGraph):
                 query_nodes.add((motif_node, node_clust))
 
         query_edges = set()
-        for start_node, end_node in nx_motif.edges():
+        for i, (start_node, end_node) in enumerate(nx_motif.edges()):
             # Get edges id with a random 'start node' identifier to enable duplicates of clust to clust edge
             start_clust, end_clust = motif_clust_map[start_node], motif_clust_map[end_node]
             start_node, end_node = motif_node_map[start_node], motif_node_map[end_node]
 
             # Filter edges between discarded clusters
             if start_clust in self.graph.nodes() and end_clust in self.graph.nodes():
-                query_edges.add((start_node, end_node, start_clust, end_clust, 1))
+                query_edges.add((start_node, end_node, start_clust, end_clust, i))
 
         return query_nodes, query_edges
 
