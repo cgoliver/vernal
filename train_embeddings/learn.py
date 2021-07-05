@@ -112,10 +112,15 @@ def train_model(model, optimizer, train_loader, test_loader, save_path,
 
             # Get data on the devices
             K = K.to(device)
-            graph = send_graph_to_device(graph, device)
+            device_graph = send_graph_to_device(graph, device)
 
             # Do the computations for the forward pass
-            out = model(graph)
+            out = model(device_graph)
+          
+            #  graph = send_graph_to_device(graph, device)
+
+            # Do the computations for the forward pass
+            # out = model(graph)
             loss = model.rec_loss(embeddings=out,
                                   target_K=K,
                                   graph=graph)

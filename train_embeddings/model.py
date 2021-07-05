@@ -276,7 +276,7 @@ class Model(nn.Module):
             enhanced = ((1 / (fraction + 0.005)) * enhanced) + 1
             weight = np.outer(enhanced, enhanced)
             weight /= np.mean(weight)
-            weight = torch.from_numpy(weight)
+            weight = torch.from_numpy(weight).to(self.current_device)
             return self.weighted_MSE(K_predict, target_K, weight)
 
         reconstruction_loss = torch.nn.MSELoss()(K_predict, target_K)
