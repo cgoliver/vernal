@@ -647,8 +647,8 @@ def simfunc_time(simfuncs, graph_path, batches=1, batch_size=5,
 if __name__ == "__main__":
     pass
 
-    graph_path = os.path.join("..", "data", "annotated", "glib_nr_annot")
-    # graph_path = os.path.join("..", "data", "annotated", "glib_sample")
+    hash_graphlets_to_use = "thursday"
+    graph_path = os.path.join("..", "data", "annotated", hash_graphlets_to_use)
     graphs = os.listdir(graph_path)
     data1 = pickle.load(open(os.path.join(graph_path, graphs[0]), 'rb'))
     data2 = pickle.load(open(os.path.join(graph_path, graphs[1]), 'rb'))
@@ -659,16 +659,15 @@ if __name__ == "__main__":
     simfunc_r1 = SimFunctionNode('R_1', 2)
     simfunc_hung = SimFunctionNode('hungarian', 2)
     simfunc_iso = SimFunctionNode('R_iso', 2, idf=True)
-    simfunc_r_graphlet = SimFunctionNode('R_graphlets', 2, hash_init='glib_nr_annot')
-    simfunc_graphlet = SimFunctionNode('graphlet', 2, hash_init='glib_nr_annot')
-    simfunc = simfunc_graphlet
+    simfunc_r_graphlet = SimFunctionNode('R_graphlets', 2, hash_init=hash_graphlets_to_use)
+    simfunc_graphlet = SimFunctionNode('graphlet', 2, hash_init=hash_graphlets_to_use)
+    simfunc = simfunc_r_graphlet
     for node1, ring1 in rings1.items():
         for node2, ring2 in rings2.items():
             a = simfunc.compare(ring1, ring2)
             b = simfunc.compare(ring1, ring1)
             print(a)
             print(b)
-
 
     # ring1 = list(rings1.values())[0]
     # print(simfunc_iso.compare(ring1, ring1))

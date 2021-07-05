@@ -316,7 +316,7 @@ def bfs_expand(G, initial_nodes, nc_block=False, depth=2, tool='RGLIB'):
             for nei in G.neighbors(n):
                 depth_ring.append(nei)
                 e_labels.add(G[n][nei][GRAPH_KEYS['bp_type'][tool]])
-        if e_labels.issubset({'CWW', 'B53', ''}) and nc_block:
+        if e_labels.issubset({'CWW', 'B53', 'B35',''}) and nc_block:
             break
         else:
             total_nodes.append(depth_ring)
@@ -394,7 +394,7 @@ def find_node(graph, chain, pos):
 
 def has_NC(G):
     for n1, n2, d in G.edges(data=True):
-        if d['label'] not in ['CWW', 'B53']:
+        if d['label'] not in ['CWW', 'B53','B35']:
             # print(d['label'])
             return True
     return False

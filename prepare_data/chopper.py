@@ -165,7 +165,7 @@ def graph_filter(G, max_nodes=10):
     if len(G.nodes()) < max_nodes:
         return False
     for _, _, d in G.edges(data=True):
-        if d[GRAPH_KEYS['bp_type'][TOOL]] not in ['CWW', 'B53']:
+        if d[GRAPH_KEYS['bp_type'][TOOL]] not in ['CWW', 'B53', 'B35']:
             return True
     return False
 

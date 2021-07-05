@@ -72,7 +72,7 @@ if function == 'train':
                         action='store_true'),
     parser.add_argument('-ed', '--embedding_dims', nargs='+', type=int, help='Dimensions for embeddings.',
                         default=[32, 64])
-    parser.add_argument("--weight", help="Whether to weight the K-matrix for NC", action='store_true')
+    parser.add_argument("--weighted", help="Whether to weight the K-matrix for NC", action='store_true')
     parser.add_argument("--normalize", help="Whether to use cosine instead of dot product", action='store_true')
     parser.add_argument('-co', '--conv_output',
                         default=True,
@@ -80,10 +80,13 @@ if function == 'train':
                         action='store_false')
     args, _ = parser.parse_known_args()
 
-    # print(f"OPTIONS USED \n ",
-    #       '-' * 10 + '\n',
-    #       '\n'.join(map(str, vars(args).items()))
-    #       )
+    args.annotated_data = "thursday"
+    args.weighted = True
+
+    print(f"OPTIONS USED \n ",
+          '-' * 10 + '\n',
+          '\n'.join(map(str, vars(args).items()))
+          )
 
     # Torch imports
     import torch
