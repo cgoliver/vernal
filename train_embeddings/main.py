@@ -80,13 +80,12 @@ if function == 'train':
                         action='store_false')
     args, _ = parser.parse_known_args()
 
-    args.annotated_data = "thursday"
-    args.weighted = True
-
-    print(f"OPTIONS USED \n ",
-          '-' * 10 + '\n',
-          '\n'.join(map(str, vars(args).items()))
-          )
+    # args.annotated_data = "thursday"
+    # args.weighted = True
+    # print(f"OPTIONS USED \n ",
+    #       '-' * 10 + '\n',
+    #       '\n'.join(map(str, vars(args).items()))
+    #       )
 
     # Torch imports
     import torch

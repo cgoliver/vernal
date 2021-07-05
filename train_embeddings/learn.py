@@ -5,6 +5,7 @@ import os
 import numpy as np
 import torch
 import dgl
+from packaging import version
 
 if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.realpath(__file__))
@@ -19,7 +20,7 @@ def send_graph_to_device(g, device):
     :param g: :param device:
     :return:
     """
-    if dgl.__version__ < 0.6:
+    if version.parse(dgl.__version__) < version.parse("0.6"):
         g.set_n_initializer(dgl.init.zero_initializer)
         g.set_e_initializer(dgl.init.zero_initializer)
 
