@@ -65,11 +65,11 @@ def test(model, test_loader, device):
     for batch_idx, (graph, K, inds, graph_sizes) in enumerate(test_loader):
         # Get data on the devices
         K = K.to(device)
-        graph = send_graph_to_device(graph, device)
+        device_graph = send_graph_to_device(graph, device)
 
         # Do the computations for the forward pass
         with torch.no_grad():
-            out = model(graph)
+            out = model(device_graph)
 
             reconstruction_loss = model.rec_loss(embeddings=out,
                                                  target_K=K,
@@ -108,19 +108,12 @@ def train_model(model, optimizer, train_loader, test_loader, save_path,
         num_batches = len(train_loader)
 
         for batch_idx, (graph, K, inds, graph_sizes) in enumerate(train_loader):
-            batch_size = len(K)
-
             # Get data on the devices
             K = K.to(device)
             device_graph = send_graph_to_device(graph, device)
 
             # Do the computations for the forward pass
             out = model(device_graph)
-          
-            #  graph = send_graph_to_device(graph, device)
-
-            # Do the computations for the forward pass
-            # out = model(graph)
             loss = model.rec_loss(embeddings=out,
                                   target_K=K,
                                   graph=graph)

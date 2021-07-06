@@ -1,21 +1,20 @@
+import os
 import sys
+
+import networkx as nx
+import numpy as np
+
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from dgl.nn.pytorch.conv import RelGraphConv
 
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-
-import os
-
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
-"""
-https://docs.dgl.ai/tutorials/models/1_gnn/4_rgcn.html#sphx-glr-tutorials-models-1-gnn-4-rgcn-py
-"""
+from train_embeddings.learn import send_graph_to_device
 
 
 def model_from_hparams(hparams, verbose=False):
@@ -221,6 +220,7 @@ class Model(nn.Module):
         """
         :param embeddings: The node embeddings
         :param target_K: The similarity matrix
+        :param graph: A DGL cpu graph
         :return:
         """
         if self.similarity:
@@ -235,7 +235,8 @@ class Model(nn.Module):
 
         if self.weighted:
             assert graph is not None
-            import networkx as nx
+            if graph.device != 'cpu':
+                graph = send_graph_to_device(graph, 'cpu')
             nx_graph = graph.to_networkx(edge_attrs=['one_hot'])
             ordered = sorted(nx_graph.nodes())
             adj_matrix_full = nx.to_scipy_sparse_matrix(nx_graph, nodelist=ordered)
