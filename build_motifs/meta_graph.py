@@ -601,7 +601,7 @@ class MGraphAll(MGraph):
         self.node_map = model_output['node_to_zind']
         self.reversed_node_map = model_output['zind_to_node']
 
-        print(f'The size of the embeddings tensor is{len(Z)}. It should be equal to the total number of nodes.')
+        print(f'The size of the embeddings tensor is {len(Z)}. It should be equal to the total number of nodes.')
 
         clust_info = cluster(Z,
                              algo=clust_algo,
@@ -828,7 +828,7 @@ if __name__ == "__main__":
                     nc_only=args.nc,
                     bb_only=args.backbone
                     )
-    print(f"Built Meta Graph in {time.perf_counter() - start} s")
+    print(f"Built Meta Graph in {time.perf_counter() - start:2f} s")
 
     if args.prune:
         mgg.prune()

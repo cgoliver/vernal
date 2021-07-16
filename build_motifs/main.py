@@ -94,7 +94,7 @@ def build_mgraph(args):
                     graph_dir=args.graphs,
                     nc_only=args.nc
                     )
-    print(f"Built Meta Graph in {time.perf_counter() - start} s")
+    print(f"Built Meta Graph in {time.perf_counter() - start:2f} s")
 
     if args.prune:
         print("pruning")

@@ -15,6 +15,7 @@ if __name__ == "__main__":
 from torch.utils.data import Dataset, DataLoader, Subset
 from tools.node_sim import k_block_list, simfunc_from_hparams
 from tools.graph_utils import fetch_graph
+from tools.utils import load_json
 from config.graph_keys import *
 
 
@@ -56,6 +57,8 @@ class V1(Dataset):
         if g_path.endswith('.p'):
             data = pickle.load(open(g_path, 'rb'))
             graph = data['graph']
+        elif g_path.endswith('.json'):
+            graph = load_json(g_path)
         else:
             graph = nx.read_gpickle(g_path)
 

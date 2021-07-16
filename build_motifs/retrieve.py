@@ -18,7 +18,7 @@ if __name__ == "__main__":
 from tools.graph_utils import graph_from_node, whole_graph_from_node, has_NC, induced_edge_filter
 from tools.learning_utils import inference_on_graph_run
 from tools.drawing import rna_draw, rna_draw_pair, rna_draw_grid
-from motif_build.meta_graph import MGraph, MGraphAll
+from build_motifs.meta_graph import MGraph, MGraphAll
 
 
 def parse_json(json_file):
@@ -536,7 +536,7 @@ if __name__ == '__main__':
     pruned_motifs = pickle.load(open('../results/motifs_files/pruned_motifs.p', 'rb'))
 
     # Load meta-graph model
-    mgg = pickle.load(open('../results/motifs_files/' + args.run + '.p', 'rb'))
+    mgg = pickle.load(open('../results/mggs/' + args.run + '.p', 'rb'))
 
     # Use the retrieve to get hit ratio
     # all_failed, all_res = hit_ratio_all(pruned_motifs, mgg)

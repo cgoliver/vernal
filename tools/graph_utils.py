@@ -10,6 +10,9 @@ import networkx as nx
 from networkx.readwrite import json_graph
 import numpy as np
 
+from tools.utils import load_json
+
+
 faces = ['W', 'S', 'H']
 orientations = ['C', 'T']
 valid_edges = ['B53'] + [orient + e1 + e2 for e1, e2 in itertools.product(faces, faces) for orient in orientations]
@@ -101,6 +104,8 @@ def induced_edge_filter(G, roots, depth=1):
 def fetch_graph(g_path):
     if g_path.endswith('.p'):
         graph = pickle.load(open(g_path, 'rb'))['graph']
+    elif g_path.endswith('.json'):
+        graph = load_json(g_path)
     else:
         graph = nx.read_gpickle(g_path)
     return graph
