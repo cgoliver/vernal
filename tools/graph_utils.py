@@ -12,26 +12,14 @@ import numpy as np
 
 from tools.utils import load_json
 
-
-faces = ['W', 'S', 'H']
-orientations = ['C', 'T']
-valid_edges = ['B53'] + [orient + e1 + e2 for e1, e2 in itertools.product(faces, faces) for orient in orientations]
-
 script_dir = os.path.dirname(os.path.realpath(__file__))
-
-graph_dir = os.path.join("..", "data", "graphs", "rna_graphs_nr")
-annot_dir = os.path.join("..", "data", "annotated", "all_rna_nr")
 
 if __name__ == "__main__":
     sys.path.append(os.path.join(script_dir, '..'))
 
-from config.graph_keys import GRAPH_KEYS
+from config.graph_keys import GRAPH_KEYS, TOOL
 
-def load_json(filename):
-    with open(filename, 'r') as f:
-        js_graph = json.load(f)
-    out_graph = json_graph.node_link_graph(js_graph)
-    return out_graph
+valid_edges = GRAPH_KEYS['valid_edges'][TOOL]
 
 
 def graph_from_pdbid(pdbid, graph_dir, graph_format='json'):
@@ -43,6 +31,7 @@ def graph_from_pdbid(pdbid, graph_dir, graph_format='json'):
         raise ValueError(f"Invalid graph format {graph_format}. Use NetworkX or JSON.")
     return graph
 
+
 def graph_from_node(node_id,
                     annot_dir=os.path.join(script_dir, '../data/annotated/whole_v4/')):
     """
@@ -52,15 +41,27 @@ def graph_from_node(node_id,
     return pickle.load(open(graph_path, 'rb'))['graph']
 
 
-def whole_graph_from_node(node_id, annot_dir=os.path.join(script_dir, graph_dir)):
+def whole_graph_from_node(node_id, graph_dir=os.path.join(script_dir, "..", "data", "graphs", "all_graphs")):
     """
         Fetch whole graph from a node id.
     """
+    # new format
+    if isinstance(node_id, str):
+        pdb = node_id.split('.')[0]
+        graph_path = os.path.join(graph_dir, pdb + '.json')
+        return load_json(graph_path)
+
     if '_' in node_id[0]:
-        graph_path = os.path.join(annot_dir, node_id[0].split('_')[0] + '.nx')
+        graph_path = os.path.join(graph_dir, node_id[0].split('_')[0] + '.nx')
     else:
-        graph_path = os.path.join(annot_dir, node_id[0])
-    return nx.read_gpickle(graph_path)
+        graph_path = os.path.join(graph_dir, node_id[0])
+    print(graph_path)
+    try:
+        return nx.read_gpickle(graph_path)
+    except FileNotFoundError:
+        # if it is a json
+        graph_path = graph_path[:-3] + '.json'
+        return load_json(graph_path)
 
 
 def induced_edge_filter(G, roots, depth=1):
@@ -321,7 +322,7 @@ def bfs_expand(G, initial_nodes, nc_block=False, depth=2, tool='RGLIB'):
             for nei in G.neighbors(n):
                 depth_ring.append(nei)
                 e_labels.add(G[n][nei][GRAPH_KEYS['bp_type'][tool]])
-        if e_labels.issubset({'CWW', 'B53', 'B35',''}) and nc_block:
+        if e_labels.issubset({'CWW', 'B53', 'B35', ''}) and nc_block:
             break
         else:
             total_nodes.append(depth_ring)
@@ -399,7 +400,7 @@ def find_node(graph, chain, pos):
 
 def has_NC(G):
     for n1, n2, d in G.edges(data=True):
-        if d['label'] not in ['CWW', 'B53','B35']:
+        if d['label'] not in ['CWW', 'B53', 'B35']:
             # print(d['label'])
             return True
     return False

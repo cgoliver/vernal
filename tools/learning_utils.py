@@ -20,6 +20,7 @@ from train_embeddings.loader import Loader, loader_from_hparams
 from train_embeddings.model import Model, model_from_hparams
 from train_embeddings.learn import send_graph_to_device
 from tools.graph_utils import fetch_graph, get_nc_nodes_index
+from config.graph_keys import GRAPH_KEYS, TOOL
 
 
 def remove(name):
@@ -144,17 +145,19 @@ def inference_on_graph(model,
     """
         Do inference on one networkx graph.
     """
-    one_hot = {edge: torch.tensor(edge_map[label]) for edge, label in
-               (nx.get_edge_attributes(graph, 'label')).items()}
-    nx.set_edge_attributes(graph, name='one_hot', values=one_hot)
 
-    g_dgl = dgl.DGLGraph()
-    g_dgl.from_networkx(nx_graph=graph, edge_attrs=['one_hot'])
+    lw_labels = GRAPH_KEYS['bp_type'][TOOL]
+    edge_map = GRAPH_KEYS['edge_map'][TOOL]
+    one_hot = {edge: torch.tensor(edge_map[label]) for edge, label in
+               (nx.get_edge_attributes(graph, lw_labels)).items()}
+    nx.set_edge_attributes(graph, name='one_hot', values=one_hot)
+    g_dgl = dgl.from_networkx(nx_graph=graph, edge_attrs=['one_hot'])
+
     g_dgl = send_graph_to_device(g_dgl, device)
     model = model.to(device)
     with torch.no_grad():
         embs = model(g_dgl)
-        embs.cpu().numpy()
+        embs = embs.cpu().numpy()
     g_nodes = list(sorted(graph.nodes()))
 
     keep_indices = range(len(graph.nodes()))

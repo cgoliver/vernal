@@ -27,7 +27,7 @@ from tools.clustering import *
 from tools.rna_ged_nx import ged
 
 import seaborn as sns
-from tools.drawing import rna_draw
+from tools.new_drawing import rna_draw
 
 
 def def_set():
@@ -267,8 +267,13 @@ class MGraph:
             """
                 Return PDB which contains motif instance frozenset.
             """
-            pdbid, _ = self.reversed_node_map[list(node_index)[0]]
-            return pdbid[:4]
+            node_value = self.reversed_node_map[list(node_index)[0]]
+            # New vs old node ids
+            if isinstance(node_value, str):
+                return node_value[:4]
+            else:
+                pdbid, _ = node_value
+                return pdbid[:4]
 
         def add_mnode(clust_id, mg, motifs_instances, motifs_instances_grouped):
             # get all nodes in the data that might be involved ie 1 motifs that could be a part of the motif
@@ -707,12 +712,12 @@ class MGraphAll(MGraph):
 
         # BUILD MNODES
         Z, motif_node_map = inference_on_graph_run(self.run, graph=original_graph, verbose=False)
+        predictions = self.cluster_model.predict(Z)
 
         # local_reversed_node_map = {value: key for key, value in motif_node_map.items()}
         # self.Z = Z
 
         nx_motif = original_graph.subgraph(motif)
-        predictions = self.cluster_model.predict(Z)
         motif_clust_map = {node: predictions[motif_node_map[node]] for node in nx_motif}
 
         query_nodes = set()

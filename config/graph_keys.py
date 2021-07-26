@@ -15,5 +15,9 @@ GRAPH_KEYS = {'nt_position': {'RGLIB': 'nt_resnum', 'FR3D': 'pdb_pos'},
               'chain': {'RGLIB': 'chain_name', 'FR3D': 'chain'},
               'bp_type': {'RGLIB': 'LW', 'FR3D': 'label'},
               'edge_map': {'RGLIB': EDGE_MAP_RGLIB, 'FR3D': EDGE_MAP_FR3D},
+              'valid_edges': {'RGLIB': EDGE_MAP_RGLIB.keys(), 'FR3D': EDGE_MAP_FR3D.keys()},
               'idf': {'RGLIB': IDF_RGLIB, 'FR3D': IDF},
               }
+TOOL = 'RGLIB'
+
+

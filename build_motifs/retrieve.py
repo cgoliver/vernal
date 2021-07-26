@@ -17,7 +17,7 @@ if __name__ == "__main__":
 
 from tools.graph_utils import graph_from_node, whole_graph_from_node, has_NC, induced_edge_filter
 from tools.learning_utils import inference_on_graph_run
-from tools.drawing import rna_draw, rna_draw_pair, rna_draw_grid
+from tools.new_drawing import rna_draw, rna_draw_pair, rna_draw_grid
 from build_motifs.meta_graph import MGraph, MGraphAll
 
 
@@ -445,7 +445,6 @@ def ged_computing(motifs, mg, depth=1):
         random_graph = induced_edge_filter(whole_graph_from_node(random_query_instance[0]),
                                            random_query_instance, depth=actual_depth)
 
-
         # TO PLOT THE RANDOM
         # colors = [['red' if n in trimmed else 'grey' for n in query_instance_graph.nodes()],
         #           ['grey' for n in random_graph.nodes()]]
@@ -525,7 +524,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     # parser.add_argument('--run', type=str, default="1hopmg")
-    parser.add_argument('--run', type=str, default="2hop_unchopped")
+    parser.add_argument('-r', '--run', type=str, default="2hop_unchopped")
     args, _ = parser.parse_known_args()
 
     # Get pruned data
@@ -535,6 +534,22 @@ if __name__ == '__main__':
     # pickle.dump(pruned_motifs, open('../data/pruned_motifs_chill.p', 'wb'))
     pruned_motifs = pickle.load(open('../results/motifs_files/pruned_motifs.p', 'rb'))
 
+
+    def old_to_new_motifs(motif_idlist):
+        """
+        Go from ('{pdb}.nx', ('{chain}', int resid)) -> '{pdb}.{chain}.{resid}'
+        """
+        new_motif_idlist = list()
+        for old_id in motif_idlist:
+            pdbnx, (chain, resid) = old_id
+            pdb = pdbnx[:-3]
+            new_id = f'{pdb}.{chain}.{resid}'
+            new_motif_idlist.append(new_id)
+        return new_motif_idlist
+
+
+    pruned_motifs = {motif_id: [old_to_new_motifs(motif_instance) for motif_instance in motif] for motif_id, motif in
+                     pruned_motifs.items()}
     # Load meta-graph model
     mgg = pickle.load(open('../results/mggs/' + args.run + '.p', 'rb'))
 
@@ -543,9 +558,14 @@ if __name__ == '__main__':
     # all_failed, all_res = ab_testing(pruned_motifs, mgg)
     # print(f"this is the result for {args.run}")
 
+    from tools.utils import load_json
+
     sample_motif = pruned_motifs['63']
+    json_graph = load_json('../data/graphs/all_graphs/1a34.json')
+
     # sample_id, sample_motif = pruned_motifs.popitem()
     # sample_id, sample_motif = pruned_motifs.popitem()
+    # mgg=1
     draw_smooth(sample_motif, mgg)
     #
     # res_dict_ged = ged_computing(motifs=pruned_motifs, mg=mgg)

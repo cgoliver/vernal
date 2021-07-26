@@ -16,7 +16,7 @@ from torch.utils.data import Dataset, DataLoader, Subset
 from tools.node_sim import k_block_list, simfunc_from_hparams
 from tools.graph_utils import fetch_graph
 from tools.utils import load_json
-from config.graph_keys import *
+from config.graph_keys import GRAPH_KEYS, TOOL
 
 
 class V1(Dataset):
@@ -26,7 +26,6 @@ class V1(Dataset):
                  depth=3,
                  debug=False,
                  shuffled=False,
-                 tool='RGLIB'
                  ):
 
         self.path = annotated_path
@@ -43,8 +42,8 @@ class V1(Dataset):
         else:
             self.level = None
             self.depth = None
-        self.tool = tool
-        self.edge_map = GRAPH_KEYS['edge_map'][tool]
+        self.tool = TOOL
+        self.edge_map = GRAPH_KEYS['edge_map'][TOOL]
         # This is len() so we have to add the +1
         self.num_edge_types = max(self.edge_map.values()) + 1
         print(f"Found {self.num_edge_types} relations")
@@ -114,7 +113,6 @@ class Loader():
                  num_workers=20,
                  debug=False,
                  shuffled=False,
-                 tool='RGLIB',
                  node_simfunc=None):
         """
 
@@ -132,8 +130,7 @@ class Loader():
         self.dataset = V1(annotated_path=annotated_path,
                           debug=debug,
                           shuffled=shuffled,
-                          node_simfunc=node_simfunc,
-                          tool=tool)
+                          node_simfunc=node_simfunc)
 
         self.node_simfunc = node_simfunc
         self.num_edge_types = self.dataset.num_edge_types
@@ -177,13 +174,11 @@ class InferenceLoader(Loader):
                  list_to_predict,
                  annotated_path,
                  batch_size=5,
-                 num_workers=20,
-                 tool='RGLIB'):
+                 num_workers=20):
         super().__init__(
             annotated_path=annotated_path,
             batch_size=batch_size,
             num_workers=num_workers,
-            tool=tool
         )
         self.dataset.all_graphs = list_to_predict
         self.dataset.path = annotated_path
@@ -208,13 +203,11 @@ def loader_from_hparams(annotated_path, hparams, list_inference=None):
         loader = Loader(annotated_path=annotated_path,
                         batch_size=hparams.get('argparse', 'batch_size'),
                         num_workers=hparams.get('argparse', 'workers'),
-                        tool=hparams.get('argparse', 'tool'),
                         node_simfunc=node_simfunc)
         return loader
 
     loader = InferenceLoader(list_to_predict=list_inference,
                              annotated_path=annotated_path,
                              batch_size=hparams.get('argparse', 'batch_size'),
-                             num_workers=hparams.get('argparse', 'workers'),
-                             tool=hparams.get('argparse', 'tool'))
+                             num_workers=hparams.get('argparse', 'workers'))
     return loader

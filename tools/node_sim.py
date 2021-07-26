@@ -21,7 +21,7 @@ if __name__ == "__main__":
 # from tools.rna_ged import ged
 # from tools.drawing import rna_draw_pair
 from tools.graphlet_hash import *
-from config.graph_keys import *
+from config.graph_keys import GRAPH_KEYS, TOOL
 from config.build_iso_mat import iso_mat as iso_matrix
 
 
@@ -64,7 +64,6 @@ class SimFunctionNode():
                  idf=False,
                  normalization=None,
                  hash_init='whole_v3',
-                 tool='RGLIB',
                  cache=True):
 
         POSSIBLE_METHODS = ['R_1', 'R_iso', 'R_graphlets', 'R_ged', 'hungarian', 'graphlet']
@@ -77,8 +76,8 @@ class SimFunctionNode():
 
         self.cache = cache
 
-        edge_map = GRAPH_KEYS['edge_map'][tool]
-        self.tool = tool
+        edge_map = GRAPH_KEYS['edge_map'][TOOL]
+        self.tool = TOOL
         self.edge_map = edge_map
 
         if self.cache:
@@ -95,7 +94,7 @@ class SimFunctionNode():
                 pickle.load(open(init_path, 'rb'))
 
         if idf:
-            self.idf = GRAPH_KEYS['idf'][tool]
+            self.idf = GRAPH_KEYS['idf'][TOOL]
         else:
             self.idf = None
 

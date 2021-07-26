@@ -16,9 +16,9 @@ from tools.ged_nx import optimize_graph_edit_distance
 
 from config.build_iso_mat import iso_mat as iso_matrix
 from config.graph_keys import EDGE_MAP_RGLIB as edge_map
-from config.graph_keys import GRAPH_KEYS
+from config.graph_keys import GRAPH_KEYS, TOOL
 
-e_key = GRAPH_KEYS['bp_type']['RGLIB']
+e_key = GRAPH_KEYS['bp_type'][TOOL]
 
 sub_matrix = np.ones_like(iso_matrix) - iso_matrix
 

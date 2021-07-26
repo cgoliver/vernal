@@ -31,14 +31,14 @@ from struct import *
 from tools.graph_utils import bfs_expand
 # from tools.rna_ged import ged
 from tools.rna_ged_nx import ged
-from config.graph_keys import GRAPH_KEYS
+from config.graph_keys import GRAPH_KEYS, TOOL
 
 # iso_matrix = pickle.load(open(os.path.join(script_dir, '../data/iso_mat.p'), 'rb'))
 # sub_matrix = np.ones_like(iso_matrix) - iso_matrix
 # iso_matrix = iso_matrix[1:, 1:]
 # edge_map = {'B53': 0, 'CHH': 1, 'CHS': 2, 'CHW': 3, 'CSH': 2, 'CSS': 4, 'CSW': 5, 'CWH': 3, 'CWS': 5, 'CWW': 6,
 #             'THH': 7, 'THS': 8, 'THW': 9, 'TSH': 8, 'TSS': 10, 'TSW': 11, 'TWH': 9, 'TWS': 11, 'TWW': 12}
-edge_map = GRAPH_KEYS['edge_map']['RGLIB']
+edge_map = GRAPH_KEYS['edge_map'][TOOL]
 indel_vector = [1 if e in ['B53', 'B35'] else 2 if e == 'CWW' else 3 for e in sorted(edge_map.keys())]
 # indel_vector = [1 if e == 'B53' else 2 if e == 'CWW' else 3 for e in sorted(edge_map.keys())]
 
@@ -304,7 +304,7 @@ if __name__ == "__main__":
     doctest.testmod()
     table = build_hash_table("../data/annotated/whole_v3", Hasher(), mode='append', max_graphs=10)
     # check hashtable visually
-    from tools.drawing import rna_draw
+    from tools.new_drawing import rna_draw
 
     for h, data in table.items():
         print(h)
