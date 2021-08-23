@@ -15,10 +15,11 @@ from tools.ged_nx import graph_edit_distance
 from tools.ged_nx import optimize_graph_edit_distance
 
 from config.build_iso_mat import iso_mat as iso_matrix
-from config.graph_keys import EDGE_MAP_RGLIB as edge_map
 from config.graph_keys import GRAPH_KEYS, TOOL
 
 e_key = GRAPH_KEYS['bp_type'][TOOL]
+indel_vector = GRAPH_KEYS['indel_vector'][TOOL]
+edge_map = GRAPH_KEYS['edge_map'][TOOL]
 
 sub_matrix = np.ones_like(iso_matrix) - iso_matrix
 
@@ -33,7 +34,6 @@ sub_matrix = np.ones_like(iso_matrix) - iso_matrix
 
 # iso_matrix = iso_matrix[1:, 1:]
 
-indel_vector = [1 if e[0] == 'B' else 2 if e == 'CWW' else 3 for e in sorted(edge_map.keys())]
 
 
 def e_sub(e1_attr, e2_attr):
