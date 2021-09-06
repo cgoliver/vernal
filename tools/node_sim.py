@@ -47,7 +47,6 @@ def simfunc_from_hparams(hparams):
                                    hash_init=hparams.get('argparse', 'annotated_data'),
                                    decay=hparams.get('argparse', 'decay'),
                                    normalization=hparams.get('argparse', 'normalization'),
-                                   tool=hparams.get('argparse', 'tool'),
                                    )
     return node_simfunc
 
@@ -561,7 +560,6 @@ def k_block_list(rings, node_sim):
     rings_values = [list(ring.values()) for ring in rings]
     nodes = list(itertools.chain.from_iterable(rings_values))
     block = np.zeros((len(nodes), len(nodes)))
-    b = node_sim.compare(nodes[0], nodes[0])
     assert node_sim.compare(nodes[0], nodes[0]) > 0.99, "Identical rings giving non 1 similarity."
     sims = [node_sim.compare(n1, n2)
             for i, (n1, n2) in enumerate(itertools.combinations(nodes, 2))]

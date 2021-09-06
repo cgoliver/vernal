@@ -19,10 +19,10 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 if __name__ == "__main__":
     sys.path.append(os.path.join(script_dir, '..'))
 
-from tools.graph_utils import graph_from_node, whole_graph_from_node, has_NC_bfs
+from tools.graph_utils import whole_graph_from_node, has_NC_bfs, to_undirected
 from tools.learning_utils import inference_on_graph_run
 from tools.learning_utils import inference_on_list
-from tools.graph_utils import bfs_expand, graph_from_node, fetch_graph
+from tools.graph_utils import bfs_expand, fetch_graph
 from tools.clustering import *
 from tools.rna_ged_nx import ged
 
@@ -578,7 +578,8 @@ class MGraphAll(MGraph):
                  optimize=True,
                  max_graphs=None,
                  nc_only=False,
-                 bb_only=False):
+                 bb_only=False,
+                 convert_undirected=True):
 
         # General
         self.run = run
@@ -593,6 +594,7 @@ class MGraphAll(MGraph):
         # Edges parameters
         self.bb_only = bb_only
         self.min_edge = min_edge
+        self.convert_undirected = convert_undirected
 
         # BUILD MNODES
         model_output = inference_on_list(self.run,
@@ -662,7 +664,8 @@ class MGraphAll(MGraph):
         for graph_name in os.listdir(self.graph_dir)[:max_graphs]:
             graph_path = os.path.join(self.graph_dir, graph_name)
             g = fetch_graph(graph_path)
-            g = g
+            if g.is_directed() and self.convert_undirected:
+                g = to_undirected(g)
             for start_node, end_node in g.edges():
                 # Get edges id
                 if start_node not in self.node_map:
@@ -719,15 +722,18 @@ class MGraphAll(MGraph):
 
         nx_motif = original_graph.subgraph(motif)
         motif_clust_map = {node: predictions[motif_node_map[node]] for node in nx_motif}
+        # print(motif_clust_map)
 
-        query_nodes = set()
-        # query_graph = nx.Graph()
         # We have to add the nodes that are in kept clusters
+        query_nodes = set()
         for motif_node in nx_motif.nodes():
             node_clust = motif_clust_map[motif_node]
             if node_clust in self.graph.nodes():
                 query_nodes.add((motif_node, node_clust))
+        # print('query nodes: ', query_nodes)
 
+        if nx_motif.is_directed() and self.convert_undirected:
+            nx_motif = to_undirected(nx_motif)
         query_edges = set()
         for i, (start_node, end_node) in enumerate(nx_motif.edges()):
             # Get edges id with a random 'start node' identifier to enable duplicates of clust to clust edge
@@ -737,7 +743,7 @@ class MGraphAll(MGraph):
             # Filter edges between discarded clusters
             if start_clust in self.graph.nodes() and end_clust in self.graph.nodes():
                 query_edges.add((start_node, end_node, start_clust, end_clust, i))
-
+        # print('query edges: ', query_edges)
         return query_nodes, query_edges
 
 

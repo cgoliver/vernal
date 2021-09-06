@@ -1,4 +1,4 @@
-# vernal: Fuzzy Recurrent Subgraph Mining
+# VeRNAl: Fuzzy Recurrent Subgraph Mining
 
 
 ![](images/vernal-img.png)
