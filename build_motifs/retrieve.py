@@ -103,26 +103,26 @@ def parse_json_new(json_file):
         return res_dict
 
     whole_dict = json.load(open(json_file, 'r'))
-
     motifs = dict()
+
     # json_graph = load_json('../data/1njp.json')
     # node_id = '1njp.0.1797'
     # print(node_id in json_graph.nodes())
-    # return
 
-    # rna3dmotif = parse_dict(whole_dict['rna3dmotif'], 'rna3dmotif')
-    # motifs.update(rna3dmotif)
+    rna3dmotif = parse_dict(whole_dict['rna3dmotif'], 'rna3dmotif')
+    motifs.update(rna3dmotif)
 
-    # bgsu = parse_dict(whole_dict['bgsu'], 'bgsu')
-    # motifs.update(bgsu)
-    #
+    bgsu = parse_dict(whole_dict['bgsu'], 'bgsu')
+    motifs.update(bgsu)
+
     carnaval = parse_dict(whole_dict['carnaval'], 'carnaval')
     motifs.update(carnaval)
     return motifs
 
 
 def prune_motifs(motifs_dict, shortest=4, sparsest=3, non_canonical=True, non_redundant=True,
-                 non_redundant_list=set(os.listdir(os.path.join(script_dir, '../data/graphs/thursday_whole_r')))):
+                 graph_dir=os.path.join(script_dir, '../data/graphs/NR'),
+                 non_redundant_dir=os.path.join(script_dir, '../data/graphs/NR')):
     """
     Clean the dict by removing sparse or small motifs
     :param motifs_dict:
@@ -133,9 +133,9 @@ def prune_motifs(motifs_dict, shortest=4, sparsest=3, non_canonical=True, non_re
     tot_inst, nr_inst = 0, 0
     mean_instance, mean_nodes = list(), list()
 
-    # non_redundant_list = set(os.listdir(os.path.join(script_dir, '../data/unchopped_v4_nr')))
+    non_redundant_list = set(os.listdir(non_redundant_dir))
 
-    for mid, instances in motifs_dict.items():
+    for motif_id, instances in motifs_dict.items():
         instance = instances[0]
         if non_redundant:
             tot_inst += len(instances)
@@ -148,14 +148,14 @@ def prune_motifs(motifs_dict, shortest=4, sparsest=3, non_canonical=True, non_re
             short += 1
             continue
         if non_canonical:
-            graph = whole_graph_from_node(instance[0])
+            graph = whole_graph_from_node(instance[0], graph_dir=graph_dir)
             motif_graph = graph.subgraph(instance)
             if not has_NC(motif_graph, label='LW'):
                 nc += 1
                 continue
         mean_instance.append(len(instances))
         mean_nodes.append(len(instances[0]))
-        res_dict[mid] = instances
+        res_dict[motif_id] = instances
 
     print(f'filtered {sparse} on sparsity, {short} on length, {nc} on non canonicals')
     print(f'non redundancy removed {tot_inst - nr_inst} /{tot_inst} instances')
@@ -163,15 +163,23 @@ def prune_motifs(motifs_dict, shortest=4, sparsest=3, non_canonical=True, non_re
     return res_dict
 
 
+def old_to_new_nodes(old_id):
+    """
+        Go from ('{pdb}.nx', ('{chain}', int resid)) -> '{pdb}.{chain}.{resid}'
+
+    """
+    pdbnx, (chain, resid) = old_id
+    pdb = pdbnx[:-3]
+    new_id = f'{pdb}.{chain}.{resid}'
+
+
 def old_to_new_motifs(motif_idlist):
     """
-    Go from ('{pdb}.nx', ('{chain}', int resid)) -> '{pdb}.{chain}.{resid}'
+        rename motifs dicts
     """
     new_motif_idlist = list()
     for old_id in motif_idlist:
-        pdbnx, (chain, resid) = old_id
-        pdb = pdbnx[:-3]
-        new_id = f'{pdb}.{chain}.{resid}'
+        new_id = old_to_new_nodes(old_id)
         new_motif_idlist.append(new_id)
     return new_motif_idlist
 
@@ -605,20 +613,22 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     # parser.add_argument('--run', type=str, default="1hopmg")
-    parser.add_argument('-r', '--run', type=str, default="2hop_unchopped")
+    parser.add_argument('-r', '--run', type=str, default="bioinformatics_1")
     args, _ = parser.parse_known_args()
 
-    # Get pruned data
-    all_motifs = parse_json_new('../data/all_motifs_NR.json')
-    pruned_motifs = prune_motifs(all_motifs)
-    print(f'{len(pruned_motifs)}/{len(all_motifs)} motifs kept')
-    # pickle.dump(pruned_motifs, open('../data/pruned_motifs.p', 'wb'))
-    # pruned_motifs = pickle.load(open('../results/motifs_files/pruned_motifs.p', 'rb'))
+    # Get pruned data : go through a motif file, and remove sparse ones (few instances),
+    #   short ones (less than four nodes) or fully canonical ones.
+    #   Then filter out the ones that are not in the NR data.
+    #   The result is a pickle of a dict (dataset, motif_id): list of list of node ids.
+    #   for instance :  ('carnaval', '258') : [['4pr6.B.122', '4pr6.B.161', '4pr6.B.162', ...], ...]
+    # all_motifs = parse_json_new('../data/all_motifs_NR.json')
+    # pruned_motifs = prune_motifs(all_motifs)
+    # print(f'{len(pruned_motifs)}/{len(all_motifs)} motifs kept')
+    # pickle.dump(pruned_motifs, open('../results/motifs_files/pruned_motifs_NR.p', 'wb'))
+    pruned_motifs = pickle.load(open('../results/motifs_files/pruned_motifs_NR.p', 'rb'))
 
-    sys.exit()
-
-    # pruned_motifs = {motif_id: [old_to_new_motifs(motif_instance) for motif_instance in motif] for motif_id, motif in
-    #                  pruned_motifs.items()}
+    # pruned_motifs = {motif_id: [old_to_new_motifs(motif_instance) for motif_instance in motif]
+    #                  for motif_id, motif in pruned_motifs.items()}
     # json_graph = load_json('../data/graphs/all_graphs/1a34.json')
 
     # Load meta-graph model
