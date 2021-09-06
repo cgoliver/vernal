@@ -10,13 +10,12 @@ import networkx as nx
 from networkx.readwrite import json_graph
 import numpy as np
 
-from tools.utils import load_json
-
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
 if __name__ == "__main__":
     sys.path.append(os.path.join(script_dir, '..'))
 
+from tools.utils import load_json
 from config.graph_keys import GRAPH_KEYS, TOOL
 
 valid_edges = GRAPH_KEYS['valid_edges'][TOOL]
@@ -32,13 +31,24 @@ def graph_from_pdbid(pdbid, graph_dir, graph_format='json'):
     return graph
 
 
-def graph_from_node(node_id,
-                    annot_dir=os.path.join(script_dir, '../data/annotated/whole_v4/')):
+def to_undirected(directed_graph):
     """
-        Fetch graph from a node id.
+    A 2.5D graphs where we need to merge CHS with CSH edges
+
+    For now it's a bit retard.
     """
-    graph_path = os.path.join(annot_dir, node_id[0].replace('.nx', '_annot.p'))
-    return pickle.load(open(graph_path, 'rb'))['graph']
+    undirected = directed_graph.to_undirected()
+    return undirected
+
+
+def fetch_graph(g_path):
+    if g_path.endswith('.p'):
+        graph = pickle.load(open(g_path, 'rb'))['graph']
+    elif g_path.endswith('.json'):
+        graph = load_json(g_path)
+    else:
+        graph = nx.read_gpickle(g_path)
+    return graph
 
 
 def whole_graph_from_node(node_id, graph_dir=os.path.join(script_dir, "..", "data", "graphs", "all_graphs")):
@@ -55,7 +65,7 @@ def whole_graph_from_node(node_id, graph_dir=os.path.join(script_dir, "..", "dat
         graph_path = os.path.join(graph_dir, node_id[0].split('_')[0] + '.nx')
     else:
         graph_path = os.path.join(graph_dir, node_id[0])
-    print(graph_path)
+    # print(graph_path)
     try:
         return nx.read_gpickle(graph_path)
     except FileNotFoundError:
@@ -100,16 +110,6 @@ def induced_edge_filter(G, roots, depth=1):
 
     subG.remove_edges_from(kill)
     return subG
-
-
-def fetch_graph(g_path):
-    if g_path.endswith('.p'):
-        graph = pickle.load(open(g_path, 'rb'))['graph']
-    elif g_path.endswith('.json'):
-        graph = load_json(g_path)
-    else:
-        graph = nx.read_gpickle(g_path)
-    return graph
 
 
 def annots_from_node(annot_dir, node_id):
@@ -398,7 +398,7 @@ def find_node(graph, chain, pos):
     return None
 
 
-def has_NC(G):
+def has_NC(G, label='label'):
     for n1, n2, d in G.edges(data=True):
         if d['LW'] not in ['CWW', 'B53', 'B35']:
             # print(d['label'])
@@ -684,4 +684,7 @@ def weisfeiler_lehman_graph_hash(
 
 
 if __name__ == "__main__":
-    nc_clean_dir("../data/unchopped_v4_nr", "../data/unchopped_v4_nr_nc")
+    # nc_clean_dir("../data/unchopped_v4_nr", "../data/unchopped_v4_nr_nc")
+    sample_graph = '../data/1njp.json'
+    sample_graph = load_json(sample_graph)
+    to_undirected(sample_graph)

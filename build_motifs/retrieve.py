@@ -15,13 +15,13 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 if __name__ == "__main__":
     sys.path.append(os.path.join(script_dir, '..'))
 
-from tools.graph_utils import graph_from_node, whole_graph_from_node, has_NC, induced_edge_filter
+from tools.graph_utils import whole_graph_from_node, has_NC, induced_edge_filter
 from tools.learning_utils import inference_on_graph_run
 from tools.new_drawing import rna_draw, rna_draw_pair, rna_draw_grid
 from build_motifs.meta_graph import MGraph, MGraphAll
 
 
-def parse_json(json_file):
+def parse_json_old(json_file):
     """
     Parse the json motifs to only get the ones with examples in our data
     and return a dict {motif_id : list of list of nodes (instances)}
@@ -64,7 +64,65 @@ def parse_json(json_file):
     return motifs
 
 
-def prune_motifs(motifs_dict, shortest=4, sparsest=3, non_canonical=True, non_redundant=True):
+def parse_json_new(json_file):
+    """
+    Same as above with the new motifs nomenclature
+
+    The json contains a dict :
+    {
+
+    """
+
+    def parse_dict(dict_to_parse, motifs_prefix):
+        """
+        inner function to apply to bgsu and carnaval dicts
+        """
+        res_dict = dict()
+        counter_none = 0
+        counter_not_none = 0
+        for motif_id, motif_instances in dict_to_parse.items():
+            filtered_instances = list()
+            for instance in motif_instances:
+                filtered_instance = []
+                for node in instance:
+                    node = node['node']
+                    if node is not None:
+                        # (a, (b, c)) = node
+                        # node = (a, (b, c))
+                        counter_not_none += 1
+                        filtered_instance.append(node)
+                    else:
+                        counter_none += 1
+                if filtered_instance:
+                    filtered_instances.append(filtered_instance)
+            if filtered_instances:
+                motif_id = (motifs_prefix, motif_id)
+                res_dict[motif_id] = filtered_instances
+        # print(counter_none)
+        # print(counter_not_none)
+        return res_dict
+
+    whole_dict = json.load(open(json_file, 'r'))
+    motifs = dict()
+
+    # json_graph = load_json('../data/1njp.json')
+    # node_id = '1njp.0.1797'
+    # print(node_id in json_graph.nodes())
+
+    rna3dmotif = parse_dict(whole_dict['rna3dmotif'], 'rna3dmotif')
+    motifs.update(rna3dmotif)
+
+    bgsu = parse_dict(whole_dict['bgsu'], 'bgsu')
+    motifs.update(bgsu)
+
+    carnaval = parse_dict(whole_dict['carnaval'], 'carnaval')
+    motifs.update(carnaval)
+    return motifs
+
+
+def prune_motifs(motifs_dict, shortest=4, sparsest=3, non_canonical=True, non_redundant=True,
+                 graph_dir=os.path.join(script_dir, '../data/graphs/NR'),
+                 non_redundant_dir=os.path.join(script_dir, '../data/graphs/NR')):
     """
     Clean the dict by removing sparse or small motifs
     :param motifs_dict:
@@ -74,12 +132,14 @@ def prune_motifs(motifs_dict, shortest=4, sparsest=3, non_canonical=True, non_re
     sparse, short, nc = 0, 0, 0
     tot_inst, nr_inst = 0, 0
     mean_instance, mean_nodes = list(), list()
-    non_redundant_list = set(os.listdir(os.path.join(script_dir, '../data/unchopped_v4_nr')))
-    for mid, instances in motifs_dict.items():
+
+    non_redundant_list = set(os.listdir(non_redundant_dir))
+
+    for motif_id, instances in motifs_dict.items():
         instance = instances[0]
         if non_redundant:
             tot_inst += len(instances)
-            instances = [instance for instance in instances if instance[0][0] in non_redundant_list]
+            instances = [instance for instance in instances if f"{instance[0][:4]}.json" in non_redundant_list]
             nr_inst += len(instances)
         if len(instances) < sparsest:
             sparse += 1
@@ -88,20 +148,40 @@ def prune_motifs(motifs_dict, shortest=4, sparsest=3, non_canonical=True, non_re
             short += 1
             continue
         if non_canonical:
-            instance = instances[0]
-            graph = whole_graph_from_node(instance[0])
+            graph = whole_graph_from_node(instance[0], graph_dir=graph_dir)
             motif_graph = graph.subgraph(instance)
-            if not has_NC(motif_graph):
+            if not has_NC(motif_graph, label='LW'):
                 nc += 1
                 continue
         mean_instance.append(len(instances))
         mean_nodes.append(len(instances[0]))
-        res_dict[mid] = instances
+        res_dict[motif_id] = instances
 
     print(f'filtered {sparse} on sparsity, {short} on length, {nc} on non canonicals')
     print(f'non redundancy removed {tot_inst - nr_inst} /{tot_inst} instances')
     print(f'On average, {np.mean(mean_instance)} instances of motifs with {np.mean(mean_nodes)} nodes')
     return res_dict
+
+
+def old_to_new_nodes(old_id):
+    """
+        Go from ('{pdb}.nx', ('{chain}', int resid)) -> '{pdb}.{chain}.{resid}'
+
+    """
+    pdbnx, (chain, resid) = old_id
+    pdb = pdbnx[:-3]
+    new_id = f'{pdb}.{chain}.{resid}'
+
+
+def old_to_new_motifs(motif_idlist):
+    """
+        rename motifs dicts
+    """
+    new_motif_idlist = list()
+    for old_id in motif_idlist:
+        new_id = old_to_new_nodes(old_id)
+        new_motif_idlist.append(new_id)
+    return new_motif_idlist
 
 
 def compute_embs(instance, run):
@@ -242,6 +322,7 @@ def retrieve_instances(query_instance, mg, depth=1):
     trimmed, trimmed_graph, actual_depth = trim_try(query_whole_graph, query_instance, depth=depth)
     # print('starting the retrieval')
     start = time.perf_counter()
+    # print(len(trimmed), 'nodes in the trimmed graphs')
     retrieved_instances = mg.retrieve_2(trimmed)
     print(f">>> Retrieved {len(retrieved_instances)} instances in {time.perf_counter() - start}")
 
@@ -258,17 +339,24 @@ def retrieve_instances(query_instance, mg, depth=1):
 def find_hits(motif, mg, depth=1, query_instance=None):
     if query_instance is None:
         query_instance = motif[0]
-
     retrieved_instances = retrieve_instances(mg=mg, depth=depth, query_instance=query_instance)
+    if len(retrieved_instances) == 0:
+        return 0, 0, 1, 1
 
     sorted_scores = sorted(list(retrieved_instances.values()), key=lambda x: -x)
     # start = time.perf_counter()
     res = list()
     failed = 0
-    # convert motif into set of ids
+    # Now can we find the other instances in our hitlist : iterate through them and keep the best overlap
     for other_instance in motif[1:]:
         instance_res = 0
-        set_form = set([mg.node_map[node] for node in other_instance])
+        # convert motif into set of ids
+        try:
+            set_form = set([mg.node_map[node] for node in other_instance])
+        except KeyError:
+            # print(f"one motif instance was missing in the node map : {other_instance}")
+            failed += 1
+            continue
 
         best = -1
         for hit, score in retrieved_instances.items():
@@ -309,7 +397,7 @@ def find_hits(motif, mg, depth=1, query_instance=None):
     return mean_best, best_ratio, failed, fail_ratio
 
 
-def hit_ratio_all(motifs, mg, depth=1):
+def hit_ratio_all(motifs, mg, depth=1, max_instances_to_look_for=None):
     # Motif 1 and 2 are isomorphic...
     # motifs = list(motifs.values())[:4]
     # query_g = whole_graph_from_node(motifs[0][0][0]).subgraph(motifs[0][0])
@@ -321,7 +409,7 @@ def hit_ratio_all(motifs, mg, depth=1):
     all_fails = list()
     all_fails_ratio = list()
     for i, (motif_id, motif) in enumerate(motifs.items()):
-        if int(i) > 5:
+        if max_instances_to_look_for is not None and int(i) > max_instances_to_look_for:
             break
         print('attempting id : ', motif_id)
         mean_best, best_ratio, failed, fail_ratio = find_hits(motif, mg, depth=1)
@@ -519,54 +607,45 @@ def draw_smooth(motif, mg, depth=1, save=None):
 if __name__ == '__main__':
     pass
     random.seed(0)
+    from tools.utils import load_json
 
     import argparse
 
     parser = argparse.ArgumentParser()
     # parser.add_argument('--run', type=str, default="1hopmg")
-    parser.add_argument('-r', '--run', type=str, default="2hop_unchopped")
+    parser.add_argument('-r', '--run', type=str, default="bioinformatics_1")
     args, _ = parser.parse_known_args()
 
-    # Get pruned data
-    # all_motifs = parse_json('../data/all_motifs_unchopped.json')
+    # Get pruned data : go through a motif file, and remove sparse ones (few instances),
+    #   short ones (less than four nodes) or fully canonical ones.
+    #   Then filter out the ones that are not in the NR data.
+    #   The result is a pickle of a dict (dataset, motif_id): list of list of node ids.
+    #   for instance :  ('carnaval', '258') : [['4pr6.B.122', '4pr6.B.161', '4pr6.B.162', ...], ...]
+    # all_motifs = parse_json_new('../data/all_motifs_NR.json')
     # pruned_motifs = prune_motifs(all_motifs)
     # print(f'{len(pruned_motifs)}/{len(all_motifs)} motifs kept')
-    # pickle.dump(pruned_motifs, open('../data/pruned_motifs_chill.p', 'wb'))
-    pruned_motifs = pickle.load(open('../results/motifs_files/pruned_motifs.p', 'rb'))
+    # pickle.dump(pruned_motifs, open('../results/motifs_files/pruned_motifs_NR.p', 'wb'))
+    pruned_motifs = pickle.load(open('../results/motifs_files/pruned_motifs_NR.p', 'rb'))
 
+    # pruned_motifs = {motif_id: [old_to_new_motifs(motif_instance) for motif_instance in motif]
+    #                  for motif_id, motif in pruned_motifs.items()}
+    # json_graph = load_json('../data/graphs/all_graphs/1a34.json')
 
-    def old_to_new_motifs(motif_idlist):
-        """
-        Go from ('{pdb}.nx', ('{chain}', int resid)) -> '{pdb}.{chain}.{resid}'
-        """
-        new_motif_idlist = list()
-        for old_id in motif_idlist:
-            pdbnx, (chain, resid) = old_id
-            pdb = pdbnx[:-3]
-            new_id = f'{pdb}.{chain}.{resid}'
-            new_motif_idlist.append(new_id)
-        return new_motif_idlist
-
-
-    pruned_motifs = {motif_id: [old_to_new_motifs(motif_instance) for motif_instance in motif] for motif_id, motif in
-                     pruned_motifs.items()}
     # Load meta-graph model
     mgg = pickle.load(open('../results/mggs/' + args.run + '.p', 'rb'))
 
     # Use the retrieve to get hit ratio
-    # all_failed, all_res = hit_ratio_all(pruned_motifs, mgg)
-    # all_failed, all_res = ab_testing(pruned_motifs, mgg)
-    # print(f"this is the result for {args.run}")
+    all_failed, all_res = hit_ratio_all(pruned_motifs, mgg)
+    all_failed, all_res = ab_testing(pruned_motifs, mgg)
+    print(f"this is the result for {args.run}")
 
-    from tools.utils import load_json
-
-    sample_motif = pruned_motifs['63']
-    json_graph = load_json('../data/graphs/all_graphs/1a34.json')
+    # sample_motif = pruned_motifs['63']
+    # json_graph = load_json('../data/graphs/all_graphs/1a34.json')
 
     # sample_id, sample_motif = pruned_motifs.popitem()
     # sample_id, sample_motif = pruned_motifs.popitem()
     # mgg=1
-    draw_smooth(sample_motif, mgg)
+    # draw_smooth(sample_motif, mgg)
     #
     # res_dict_ged = ged_computing(motifs=pruned_motifs, mg=mgg)
     # print(res_dict_ged)

@@ -49,7 +49,8 @@ if function == 'train':
 
     # Kernel function arguments
     parser.add_argument('-sf', '--sim_function', type=str,
-                        help='Node similarity function (Supported Options: R_1, R_IDF, R_iso, hungarian).',
+                        help='Node similarity function (Supported Options: R_1, R_IDF, R_iso, '
+                             'hungarian, R_graphlets, graphlet).',
                         default="R_1")
     parser.add_argument("-kd", "--kernel_depth", type=int, help="Number of hops to use in kernel.", default=3)
     parser.add_argument("--decay", type=float, help="decay for the kernel", default=0.8)

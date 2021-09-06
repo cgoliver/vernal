@@ -92,7 +92,8 @@ def collate_wrapper(node_simfunc):
             batched_graph = dgl.batch(graphs)
             K = k_block_list(rings, node_simfunc)
             idx = np.array(idx)
-            len_graphs = [len(graph) for graph in graphs]
+            # len_graphs = [len(graph) for graph in graphs]
+            len_graphs = [graph.number_of_nodes() for graph in graphs]
             return batched_graph, torch.from_numpy(K).detach().float(), torch.from_numpy(idx), len_graphs
     else:
         def collate_block(samples):
@@ -101,7 +102,8 @@ def collate_wrapper(node_simfunc):
             graphs, _, idx = map(list, zip(*samples))
             batched_graph = dgl.batch(graphs)
             idx = np.array(idx)
-            len_graphs = [len(graph) for graph in graphs]
+            # len_graphs = [len(graph) for graph in graphs]
+            len_graphs = [graph.number_of_nodes() for graph in graphs]
             return batched_graph, [1 for _ in samples], torch.from_numpy(idx), len_graphs
     return collate_block
 
