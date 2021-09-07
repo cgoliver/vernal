@@ -63,7 +63,7 @@ def get_args():
                                              action='store_true',
                                       help="If True, only connect via backbone.")
 
-    parser.add_argument("--min_motif", "-m", type=int,
+    parser.add_argument("--min_edge", "-m", type=int,
                                              default=100,
                                              help="Minimum number of instnaaces\
                                                    to count as motif.")
@@ -88,7 +88,7 @@ def build_mgraph(args):
                     clust_algo=args.clust_algo,
                     n_components=args.n_components,
                     optimize=False,
-                    min_edge=args.min_motif,
+                    min_edge=args.min_edge,
                     max_var=args.max_var,
                     max_graphs=None,
                     graph_dir=args.graphs,

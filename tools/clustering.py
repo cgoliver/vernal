@@ -17,6 +17,7 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 if __name__ == "__main__":
     sys.path.append(os.path.join(script_dir, '..'))
 
+
 def optimize_silhouette(Z,
                         min_factor=1.05,
                         max_clusts=1000,
@@ -180,7 +181,6 @@ def k_means_agg(centers, full_labels, distance_threshold=0.01):
 
 def k_means(Z,
             optimize=False,
-            aggregate=False,
             n_clusters=100,
             min_factor=1.05,
             min_clust=2,
@@ -197,34 +197,21 @@ def k_means(Z,
                                          min_clusts=min_clust,
                                          clust_step=clust_step)
     model = MiniBatchKMeans(n_clusters=n_clusters, random_state=random_state)
-    clust_ids = model.fit_predict(Z)
+    model = model.fit(Z)
+    clust_ids = model.predict(Z)
     clust_centers = model.cluster_centers_
-    scores = model.fit_transform(Z)
-
-    if aggregate:
-        clust_ids, clust_centers = k_means_agg(clust_centers,
-                                               clust_ids)
-
-    # clust_map = {c:i for i,c in enumerate(set(clust_ids))}
-    # clust_ids = [clust_map[c] for c in clust_ids]
 
     dists_to_center = []
     for i in range(n_clusters):
         dists_to_center.append(
-            np.mean(
-                list(map(partial(euclidean, clust_centers[i]),
-                         Z[np.where(clust_ids == i)]
-                         )
-                     )
-            )
-        )
+            np.mean(list(map(partial(euclidean, clust_centers[i]), Z[np.where(clust_ids == i)]))))
 
     # assert len(dists_to_center) == len(set(clust_ids)), "Spread size doesnt match k"
 
     return {'model': model,
             'labels': clust_ids,
             'centers': clust_centers,
-            'scores': model.fit_transform(Z),
+            'scores': model.transform(Z),
             'spread': dists_to_center,
             'n_components': len(set(clust_ids)),
             'components': sorted(list(set(clust_ids)))}
@@ -249,13 +236,14 @@ def cluster(Z, algo='k_means', **algo_params):
 
 if __name__ == "__main__":
     from tools.learning_utils import inference_on_list
+
     graph_dir = '../data/unchopped_v4_nr'
     model_output = inference_on_list('1hop_weight',
-                                      graph_dir,
-                                      os.listdir(graph_dir),
-                                      max_graphs=8000,
-                                      nc_only=True
-                                      )
+                                     graph_dir,
+                                     os.listdir(graph_dir),
+                                     max_graphs=8000,
+                                     nc_only=True
+                                     )
 
     Z = model_output['Z']
 

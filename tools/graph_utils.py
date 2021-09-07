@@ -51,7 +51,7 @@ def fetch_graph(g_path):
     return graph
 
 
-def whole_graph_from_node(node_id, graph_dir=os.path.join(script_dir, "..", "data", "graphs", "all_graphs")):
+def whole_graph_from_node(node_id, graph_dir=os.path.join(script_dir, "..", "data", "graphs", "NR")):
     """
         Fetch whole graph from a node id.
     """

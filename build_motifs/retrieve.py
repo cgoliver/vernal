@@ -239,9 +239,13 @@ def trim_try(whole_graph, instance, depth=1):
     """
     trimmed = []
     trimmed_graph = whole_graph.subgraph(trimmed)
+    # Start with empty graph.
+    # Then the successive graphs are supposedly bigger up until they are not empty
     while not trimmed_graph.edges():
         trimmed = trim(instance, depth=depth, whole_graph=whole_graph)
         trimmed_graph = whole_graph.subgraph(trimmed)
+        # print('total edges : ', len(trimmed_graph.edges()))
+        # print('depth : ', depth)
         if depth < 1:
             trimmed = instance
             trimmed_graph = whole_graph.subgraph(instance)
@@ -304,6 +308,10 @@ def draw_hit(hit, mg, instance=None):
 
 
 def retrieve_instances(query_instance, mg, depth=1):
+    """
+    Trim a query motif instance as much as possible to remove border effects,
+        then call retrieve with this query graph
+    """
     # DEBUG
     # print(query_instance)
     # query_g = whole_graph_from_node(motif[0][0]).subgraph(motif[0])
@@ -320,9 +328,8 @@ def retrieve_instances(query_instance, mg, depth=1):
 
     # Sometimes one can not trim the motif as much as we could have like, so we need to trim less
     trimmed, trimmed_graph, actual_depth = trim_try(query_whole_graph, query_instance, depth=depth)
-    # print('starting the retrieval')
+    print('nodelist we start from', trimmed)
     start = time.perf_counter()
-    # print(len(trimmed), 'nodes in the trimmed graphs')
     retrieved_instances = mg.retrieve_2(trimmed)
     print(f">>> Retrieved {len(retrieved_instances)} instances in {time.perf_counter() - start}")
 
@@ -337,6 +344,9 @@ def retrieve_instances(query_instance, mg, depth=1):
 
 
 def find_hits(motif, mg, depth=1, query_instance=None):
+    """
+    Use first instance to retrieve others
+    """
     if query_instance is None:
         query_instance = motif[0]
     retrieved_instances = retrieve_instances(mg=mg, depth=depth, query_instance=query_instance)
@@ -353,6 +363,7 @@ def find_hits(motif, mg, depth=1, query_instance=None):
         # convert motif into set of ids
         try:
             set_form = set([mg.node_map[node] for node in other_instance])
+
         except KeyError:
             # print(f"one motif instance was missing in the node map : {other_instance}")
             failed += 1
@@ -411,6 +422,7 @@ def hit_ratio_all(motifs, mg, depth=1, max_instances_to_look_for=None):
     for i, (motif_id, motif) in enumerate(motifs.items()):
         if max_instances_to_look_for is not None and int(i) > max_instances_to_look_for:
             break
+        print()
         print('attempting id : ', motif_id)
         mean_best, best_ratio, failed, fail_ratio = find_hits(motif, mg, depth=1)
         all_best.append(mean_best)
@@ -613,7 +625,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     # parser.add_argument('--run', type=str, default="1hopmg")
-    parser.add_argument('-r', '--run', type=str, default="bioinformatics_1")
+    parser.add_argument('-r', '--run', type=str, default="bioinformatics_1_unfiltered_debug")
     args, _ = parser.parse_known_args()
 
     # Get pruned data : go through a motif file, and remove sparse ones (few instances),
@@ -632,11 +644,17 @@ if __name__ == '__main__':
     # json_graph = load_json('../data/graphs/all_graphs/1a34.json')
 
     # Load meta-graph model
-    mgg = pickle.load(open('../results/mggs/' + args.run + '.p', 'rb'))
+    model_name ='../results/mggs/' + args.run + '.p'
+    # print(model_name)
+    mgg = pickle.load(open(model_name, 'rb'))
+
+    # nc, ec = mgg.statistics()
+    # print(nc)
+    # print(ec)
 
     # Use the retrieve to get hit ratio
-    all_failed, all_res = hit_ratio_all(pruned_motifs, mgg)
-    all_failed, all_res = ab_testing(pruned_motifs, mgg)
+    all_failed, all_res = hit_ratio_all(pruned_motifs, mgg, max_instances_to_look_for=3)
+    # all_failed, all_res = ab_testing(pruned_motifs, mgg)
     print(f"this is the result for {args.run}")
 
     # sample_motif = pruned_motifs['63']
