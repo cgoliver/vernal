@@ -198,9 +198,34 @@ def k_means(Z,
                                          clust_step=clust_step)
     model = MiniBatchKMeans(n_clusters=n_clusters, random_state=random_state)
     model = model.fit(Z)
-    clust_ids = model.predict(Z)
-    clust_centers = model.cluster_centers_
 
+    def remove_redundant(kmean_model):
+        """
+        sometimes the kmeans will yield a model with collapsed centroids.
+
+        This is to deal with this problem.
+        """
+        import scipy.spatial.distance as dist
+        centers = kmean_model.cluster_centers_
+        centers_pdist = dist.squareform(dist.pdist(centers))
+        binary_centers_pdist = centers_pdist < 0.0001
+        n = len(binary_centers_pdist)
+
+        # Maybe not the most elegant, but I don't have a good idea :
+        # Start from the last point, and if there is no previous point that is at a low distance, keep it
+        ids_to_keep = set()
+        for decreasing_i in range(n - 1, -1, -1):
+            previous_neighbors = binary_centers_pdist[decreasing_i][:decreasing_i]
+            if not previous_neighbors.any():
+                ids_to_keep.add(decreasing_i)
+        ids_to_keep = list(ids_to_keep)
+        filtered_centers = centers[ids_to_keep]
+        kmean_model.cluster_centers_ = filtered_centers
+
+    remove_redundant(kmean_model=model)
+
+    clust_centers = model.cluster_centers_
+    clust_ids = model.predict(Z)
     dists_to_center = []
     for i in range(n_clusters):
         dists_to_center.append(

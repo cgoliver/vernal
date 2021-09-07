@@ -716,52 +716,61 @@ class MGraphAll(MGraph):
         :param motif: a list of nodes flagged as motifs
         :return:
         """
-
         # BUILD MNODES
         Z, motif_node_map = inference_on_graph_run(self.run, graph=original_graph, verbose=False)
         predictions = self.cluster_model.predict(Z)
 
         # pick a random node and get its original vs current embedding : we see it's the same
-        # random_node = list(motif_node_map.keys())[0]
-        # key_now = motif_node_map[random_node]
-        # key_first = self.node_map[random_node]
-        # embedding_now = Z[key_now]
-        # embedding_first = self.Z[key_first]
-        # print(random_node)
-        # print(embedding_now)
-        # print(embedding_first)
-        #
-        # # Now look at its predicted clusters : surprise, it's not the same...
-        # print('labels : ', len(self.labels))
-        # print(key_first)
-        # print('predicted', len(predictions))
-        # print(key_now)
-        # cluster_now = predictions[key_now]
-        # cluster_first = self.labels[key_first]
-        # print(cluster_now)
-        # print(cluster_first)
+        random_node = list(motif_node_map.keys())[0]
+        # random_node = '1kh6.A.30'
+        key_now = motif_node_map[random_node]
+        key_first = self.node_map[random_node]
+        embedding_now = Z[key_now]
+        embedding_first = self.Z[key_first]
+        print(random_node)
+        print(embedding_now)
+        print(embedding_first)
+        print('Are the nodes the same ?')
+        print()
+
+        # Now look at its predicted clusters : surprise, it's not the same...
+        print('labels : ', len(self.labels), 'key : ', key_first)
+        print('predicted', len(predictions), 'key : ', key_now)
+        cluster_now = predictions[key_now]
+        cluster_first = self.labels[key_first]
+        print('new cluster : ', cluster_now)
+        print('first cluster : ', cluster_first)
+        print()
 
         # If we look at the centroids, we see that the centroids of those two clusters are not the same.
         # At least now, the closest centroid is the one from the most recent prediction, so self.labels looks crappy
         # from scipy.spatial import distance
         # saved_cluster_model_centroids = self.centroids_debug
-        # cluster_model_centroids = self.cluster_model.cluster_centers_
+        cluster_model_centroids = self.cluster_model.cluster_centers_
         # print('centroids before after :')
         # print(saved_cluster_model_centroids[3])
         # print(cluster_model_centroids[3])
 
         # print('all centroids', cluster_model_centroids.shape)
-        # centroids_now = cluster_model_centroids[cluster_now]
-        # centroids_first = cluster_model_centroids[cluster_first]
-        # print(centroids_now)
-        # print(centroids_first)
+        centroids_now = cluster_model_centroids[cluster_now]
+        centroids_first = cluster_model_centroids[cluster_first]
+        print(centroids_now)
+        print(centroids_first)
+
+        import scipy.spatial as spatial
+        centers_pdist = spatial.distance.pdist(cluster_model_centroids)
+        print((centers_pdist < 0.001).sum())
+        print(len(centers_pdist))
+        print(len(centers_pdist))
+
         # dists = distance.cdist(np.vstack((centroids_now, centroids_first)),
         #                        embedding_now[None,:], 'euclidean')
         # print(dists)
-        sys.exit()
 
         # local_reversed_node_map = {value: key for key, value in motif_node_map.items()}
         # self.Z = Z
+
+        sys.exit()
 
         nx_motif = original_graph.subgraph(motif)
         motif_clust_map = {node: predictions[motif_node_map[node]] for node in nx_motif}
@@ -771,16 +780,22 @@ class MGraphAll(MGraph):
         query_nodes = set()
         for motif_node in nx_motif.nodes():
             node_clust = motif_clust_map[motif_node]
-            # print(node_clust in self.graph.nodes())
-            # print( self.graph.nodes())
-            # print(node_clust)
+            print(motif_node)
+            print(node_clust in self.graph.nodes())
+            print(self.graph.nodes())
+            print(node_clust)
+            print()
             if node_clust in self.graph.nodes():
                 query_nodes.add((motif_node, node_clust))
         print('unfiltered query nodes: ', len(nx_motif.nodes()))
+        print('unfiltered query nodes: ', nx_motif.nodes())
         print('query nodes: ', len(query_nodes))
+        print('query nodes: ', query_nodes)
         print(len(self.labels))
         print(sorted(list(set(self.labels))))
         print(len(self.components))
+
+        sys.exit()
 
         if nx_motif.is_directed() and self.convert_undirected:
             nx_motif = to_undirected(nx_motif)
