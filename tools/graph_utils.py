@@ -400,7 +400,7 @@ def find_node(graph, chain, pos):
 
 def has_NC(G, label='label'):
     for n1, n2, d in G.edges(data=True):
-        if d[label] not in ['cWW', 'CWW', 'B53', 'B35']:
+        if d['LW'] not in ['CWW', 'B53', 'B35']:
             # print(d['label'])
             return True
     return False

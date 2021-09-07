@@ -107,7 +107,10 @@ def build_mgraph(args):
 
 def build_motifs(mgraph, args):
     from build_motifs.motifs import maga
-    maga_graph = maga(mgraph, levels=args.levels)
+    maga_graph = maga(mgraph, 
+                      levels=args.levels, 
+                      graph_dir=args.graphs
+                      )
     pass
 
 def retrieve():

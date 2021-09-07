@@ -144,7 +144,7 @@ def maga_next(maga_graph,
         yield maga_graph
 
 
-def maga(mgraph, levels=10):
+def maga(mgraph, levels=10, graph_dir="../data/graphs"):
     print(f">>> Meta-graph has {len(mgraph.graph.nodes())} nodes",
           f"and {len(mgraph.graph.edges())} edges.")
     maga_graph = nx.relabel_nodes(mgraph.graph,
@@ -184,7 +184,11 @@ def maga(mgraph, levels=10):
                 if boring_clusters[clust]['samples'] < n_boring_samples:
                     boring_clusters[clust]['samples'] += 1
                     node_id = mgraph.reversed_node_map[node]
-                    G = whole_graph_from_node(node_id)
+                    try:
+                        G = whole_graph_from_node(node_id, graph_dir=graph_dir)
+                    except FileNotFoundError:
+                        print(f"Missing {node_id}")
+                        continue
                     if not has_NC_bfs(G, node_id, depth=1):
                         boring_clusters[clust]['boring'] += 1
 
