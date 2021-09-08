@@ -328,18 +328,9 @@ def retrieve_instances(query_instance, mg, depth=1):
 
     # Sometimes one can not trim the motif as much as we could have like, so we need to trim less
     trimmed, trimmed_graph, actual_depth = trim_try(query_whole_graph, query_instance, depth=depth)
-    print('nodelist we start from', trimmed)
     start = time.perf_counter()
     retrieved_instances = mg.retrieve_2(trimmed)
     print(f">>> Retrieved {len(retrieved_instances)} instances in {time.perf_counter() - start}")
-
-    # retrieved_instances_2 = mg.retrieve_2(trimmed)
-    # print(retrieved_instances == retrieved_instances_2)
-    # set1 = set(retrieved_instances.items())
-    # set2 = set(retrieved_instances_2.items())
-    # print(set1 ^ set2)
-    # print(f">>> Retrieved {len(retrieved_instances_2)} instances in {time.perf_counter() - start}")
-
     return retrieved_instances
 
 
@@ -644,10 +635,9 @@ if __name__ == '__main__':
     # json_graph = load_json('../data/graphs/all_graphs/1a34.json')
 
     # Load meta-graph model
-    model_name ='../results/mggs/' + args.run + '.p'
+    model_name = '../results/mggs/' + args.run + '.p'
     # print(model_name)
     mgg = pickle.load(open(model_name, 'rb'))
-
     # nc, ec = mgg.statistics()
     # print(nc)
     # print(ec)

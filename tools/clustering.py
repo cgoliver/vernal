@@ -220,12 +220,17 @@ def k_means(Z,
                 ids_to_keep.add(decreasing_i)
         ids_to_keep = list(ids_to_keep)
         filtered_centers = centers[ids_to_keep]
-        kmean_model.cluster_centers_ = filtered_centers
 
-    remove_redundant(kmean_model=model)
+        # Create a new object for consistent function semantics
+        n_clusters = len(filtered_centers)
+        pruned_model = MiniBatchKMeans(n_clusters=n_clusters, init=filtered_centers)
+        pruned_model.cluster_centers_ = filtered_centers
+        return pruned_model
 
-    clust_centers = model.cluster_centers_
-    clust_ids = model.predict(Z)
+    pruned_model = remove_redundant(kmean_model=model)
+    clust_centers = pruned_model.cluster_centers_
+    n_clusters = len(clust_centers)
+    clust_ids = pruned_model.predict(Z)
     dists_to_center = []
     for i in range(n_clusters):
         dists_to_center.append(
