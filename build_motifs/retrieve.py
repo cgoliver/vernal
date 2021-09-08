@@ -407,7 +407,7 @@ def hit_ratio_all(motifs, mg, depth=1, max_instances_to_look_for=None):
     all_fails = list()
     all_fails_ratio = list()
     for i, (motif_id, motif) in enumerate(motifs.items()):
-        if max_instances_to_look_for is not None and int(i) > max_instances_to_look_for:
+        if max_instances_to_look_for is not None and int(i) >= max_instances_to_look_for:
             break
         print()
         print('attempting id : ', motif_id)
@@ -470,6 +470,34 @@ def ab_testing(motifs, mg, depth=1):
     print(f'For random query, {np.mean(other_all_fails):.4f} fails for a {np.mean(other_all_fails_ratio):.4f} ratio')
     print(f'And {np.mean(other_all_best):.4f} rank for a {np.mean(other_all_best_ratio):.4f} ratio')
     return results_dict
+
+
+def parse_ab_testing(results_dict):
+    all_best = list()
+    all_best_ratio = list()
+    all_fails = list()
+    all_fails_ratio = list()
+    other_all_best = list()
+    other_all_best_ratio = list()
+    other_all_fails = list()
+    other_all_fails_ratio = list()
+
+    for motif_id, (mean_best, best_ratio, failed, fail_ratio, random_query_instance, decoy_mean_best, decoy_best_ratio,
+                   decoy_failed, decoy_fail_ratio) in results_dict.items():
+        print(motif_id)
+        all_best.append(mean_best)
+        all_fails.append(failed)
+        all_best_ratio.append(best_ratio)
+        all_fails_ratio.append(fail_ratio)
+        other_all_best.append(decoy_mean_best)
+        other_all_fails.append(decoy_failed)
+        other_all_best_ratio.append(decoy_best_ratio)
+        other_all_fails_ratio.append(decoy_fail_ratio)
+
+    print(f'on average, {np.mean(all_fails):.4f} fails for a {np.mean(all_fails_ratio):.4f} ratio')
+    print(f'And {np.mean(all_best):.4f} rank for a {np.mean(all_best_ratio):.4f} ratio')
+    print(f'For random query, {np.mean(other_all_fails):.4f} fails for a {np.mean(other_all_fails_ratio):.4f} ratio')
+    print(f'And {np.mean(other_all_best):.4f} rank for a {np.mean(other_all_best_ratio):.4f} ratio')
 
 
 def ged_computing(motifs, mg, depth=1):
@@ -618,7 +646,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     # parser.add_argument('--run', type=str, default="1hopmg")
-    parser.add_argument('-r', '--run', type=str, default="bioinformatics_1_unfiltered_debug")
+    parser.add_argument('-r', '--run', type=str, default="bioinformatics_1_unfiltered")
     args, _ = parser.parse_known_args()
 
     # Get pruned data : go through a motif file, and remove sparse ones (few instances),
@@ -632,10 +660,6 @@ if __name__ == '__main__':
     # pickle.dump(pruned_motifs, open('../results/motifs_files/pruned_motifs_NR.p', 'wb'))
     pruned_motifs = pickle.load(open('../results/motifs_files/pruned_motifs_NR.p', 'rb'))
 
-    # pruned_motifs = {motif_id: [old_to_new_motifs(motif_instance) for motif_instance in motif]
-    #                  for motif_id, motif in pruned_motifs.items()}
-    # json_graph = load_json('../data/graphs/all_graphs/1a34.json')
-
     # Load meta-graph model
     model_name = f'../results/mggs/{args.run}.p'
     mgg = pickle.load(open(model_name, 'rb'))
@@ -645,19 +669,26 @@ if __name__ == '__main__':
 
     # Use the retrieve to get hit ratio
     # print(len(pruned_motifs))
-    # all_failed, all_res = hit_ratio_all(pruned_motifs, mgg, max_instances_to_look_for=None)
-    results_dict = ab_testing(pruned_motifs, mgg)
-    pickle.dump(results_dict, open(f'../results/results_dict_{args.run}.p', 'wb'))
-    print(f"this is the result for {args.run}")
+    all_failed, all_res = hit_ratio_all(pruned_motifs, mgg, max_instances_to_look_for=1)
+    # results_dict = ab_testing(pruned_motifs, mgg)
+    # pickle.dump(results_dict, open(f'../results/results_dict_{args.run}.p', 'wb'))
+    # print(f"this is the result for {args.run}")
+
+    # results_dict = pickle.load(open(f'../results/results_dict_{args.run}.p', 'rb'))
+    # parse_ab_testing(results_dict)
 
     # sample_motif = pruned_motifs['63']
     # json_graph = load_json('../data/graphs/all_graphs/1a34.json')
 
     # sample_id, sample_motif = pruned_motifs.popitem()
-    # sample_id, sample_motif = pruned_motifs.popitem()
-    # mgg=1
+    # for sample_id, sample_motif in pruned_motifs.items():
+    #     sample_motif_instance = sample_motif[0]
+    #     print(sample_motif_instance)
+    #     len_motifs = len(sample_motif_instance)
+    #     if len_motifs < 5:
+    #         break
     # draw_smooth(sample_motif, mgg)
-    #
+
     # res_dict_ged = ged_computing(motifs=pruned_motifs, mg=mgg)
     # print(res_dict_ged)
     # pickle.dump(res_dict_ged, open('res_dict_ged.p', 'wb'))

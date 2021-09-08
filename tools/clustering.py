@@ -238,10 +238,10 @@ def k_means(Z,
 
     # assert len(dists_to_center) == len(set(clust_ids)), "Spread size doesnt match k"
 
-    return {'model': model,
+    return {'model': pruned_model,
             'labels': clust_ids,
             'centers': clust_centers,
-            'scores': model.transform(Z),
+            'scores': pruned_model.transform(Z),
             'spread': dists_to_center,
             'n_components': len(set(clust_ids)),
             'components': sorted(list(set(clust_ids)))}

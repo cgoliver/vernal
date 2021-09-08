@@ -61,7 +61,7 @@ def process_axis(axis,
     for n1, n2, d in g.edges(data=True):
         try:
             symbol = make_label(d[label])
-            print(d[label], symbol)
+            # print(d[label], symbol)
             edge_labels[(n1, n2)] = symbol
         except:
             if d[label] == 'B53' or d[label] == 'B35':
