@@ -235,7 +235,7 @@ class MGraph:
         """
         Start with a motif representative : a list of nodes that make motif.
         Build the query graph :
-         -Create embeddings for the motif nodes, they need the whole graph. then do clustering and put query nodes
+        - Create embeddings for the motif nodes, they need the whole graph. then do clustering and put query nodes
          in the appropriate cluster. Then add the edges that make up the connectivity of the query motif
         - Then add all nodes in a cluster that is part of the query graph in a big motif_instance set
         - Then Follow the query graph edges and connect these instances
@@ -244,6 +244,12 @@ class MGraph:
         and a dict motifs_instances_grouped { pdb_id : set of frozensets } for a more efficient looping :
         When exploring a new edge in the query meta graph, we loop through edges that make this edge and every time
         we can only look at the frozensets in motifs_instances_grouped[current_pdb]
+
+        Then we keep track of the motifs that got merged with this meta-edge exploration :
+            - We only keep the largest resulting sets by exporing all subsets
+            - We remove the single nodes from the set to explore, since they are striclty less promising.
+        These two steps help limit the explosion of the set M
+
         :param motif:
         :return: {frozenset of node ids : score}
         """
@@ -271,12 +277,18 @@ class MGraph:
                 return pdbid[:4]
 
         def add_mnode(clust_id, mg, motifs_instances, motifs_instances_grouped):
-            # get all nodes in the data that might be involved ie 1 motifs that could be a part of the motif
+            """
+            Get all nodes in the data that might be involved ie 1 motifs that could be a part of the motif
+
+            Then each of those node are cast into a frozenset for homogeneity since further expanded motifs
+             will be frozensets too.
+            Also expand motifs_instances_grouped which maps whole graphs to nodes involved in a motif.
+            """
             mnode = mg.graph.nodes[clust_id]
             node_candidates = mnode['node_ids']
 
-            # map pdbid -> set(frozensets)
             # Turn the ids of seeds into frozensets that represent current motif nodes that get expanded
+            # map pdbid -> set(frozensets)
             for int_id in node_candidates:
                 motif_nodes = frozenset([int_id])
                 motifs_instances[motif_nodes] = float(mg.id_to_score[int_id])
@@ -285,9 +297,6 @@ class MGraph:
         motifs_instances = dict()
         motifs_instances_grouped = defaultdict(set)
         visited_clusts = set()
-
-        print(query_nodes)
-        print(query_edges)
 
         for edge in query_edges:
             # Try to access the corresponding meta-edge and get the list of all candidate edges

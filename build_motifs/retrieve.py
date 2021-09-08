@@ -336,7 +336,9 @@ def retrieve_instances(query_instance, mg, depth=1):
 
 def find_hits(motif, mg, depth=1, query_instance=None):
     """
-    Use first instance to retrieve others
+    Use first instance to retrieve others.
+
+    We iterate through the results dict {frozenset of ids : score} and keep the intersection with highest score.
     """
     if query_instance is None:
         query_instance = motif[0]
@@ -344,8 +346,8 @@ def find_hits(motif, mg, depth=1, query_instance=None):
     if len(retrieved_instances) == 0:
         return 0, 0, 1, 1
 
-    sorted_scores = sorted(list(retrieved_instances.values()), key=lambda x: -x)
     # start = time.perf_counter()
+    sorted_scores = sorted(list(retrieved_instances.values()), key=lambda x: -x)
     res = list()
     failed = 0
     # Now can we find the other instances in our hitlist : iterate through them and keep the best overlap
@@ -368,13 +370,6 @@ def find_hits(motif, mg, depth=1, query_instance=None):
                     rank = sorted_scores.index(score)
                     instance_res = (hit, score, rank)
 
-                # DEBUG
-                # try:
-                #     pass
-                #     # draw_hit(hit, mg, instance)
-                # except:
-                #     continue
-
             # DEBUG PLOTS
             # query_g = whole_graph_from_node(motif[0][0]).subgraph(motif[0])
             # failure_g = whole_graph_from_node(other_instance[0]).subgraph(other_instance)
@@ -386,6 +381,7 @@ def find_hits(motif, mg, depth=1, query_instance=None):
         else:
             res.append(instance_res)
 
+    #
     instance_ranks = [item[2] for item in res]
     if not instance_ranks:
         mean_best = len(retrieved_instances)
@@ -415,7 +411,7 @@ def hit_ratio_all(motifs, mg, depth=1, max_instances_to_look_for=None):
             break
         print()
         print('attempting id : ', motif_id)
-        mean_best, best_ratio, failed, fail_ratio = find_hits(motif, mg, depth=1)
+        mean_best, best_ratio, failed, fail_ratio = find_hits(motif, mg, depth=depth)
         all_best.append(mean_best)
         all_fails.append(failed)
         all_best_ratio.append(best_ratio)
@@ -440,6 +436,7 @@ def ab_testing(motifs, mg, depth=1):
     other_all_best_ratio = list()
     other_all_fails = list()
     other_all_fails_ratio = list()
+    results_dict = dict()
 
     all_motifs = [(motif_id, motif) for motif_id, motif in motifs.items()]
     for i, (motif_id, motif) in enumerate(all_motifs):
@@ -447,7 +444,7 @@ def ab_testing(motifs, mg, depth=1):
         # if int(motif_id) != 5:
         #     continue
         print('attempting id : ', motif_id)
-        mean_best, best_ratio, failed, fail_ratio = find_hits(motif, mg, depth=1)
+        mean_best, best_ratio, failed, fail_ratio = find_hits(motif, mg, depth=depth)
         all_best.append(mean_best)
         all_fails.append(failed)
         all_best_ratio.append(best_ratio)
@@ -458,16 +455,21 @@ def ab_testing(motifs, mg, depth=1):
         if other_random >= i:
             other_random += 1
         random_query_instance = all_motifs[other_random][1][0]
-        mean_best, best_ratio, failed, fail_ratio = find_hits(motif, mg, depth=1, query_instance=random_query_instance)
-        other_all_best.append(mean_best)
-        other_all_fails.append(failed)
-        other_all_best_ratio.append(best_ratio)
-        other_all_fails_ratio.append(fail_ratio)
+
+        # Try getting hits for the motif at hands with this random instance
+        decoy_mean_best, decoy_best_ratio, decoy_failed, decoy_fail_ratio = \
+            find_hits(motif, mg, depth=depth, query_instance=random_query_instance)
+        other_all_best.append(decoy_mean_best)
+        other_all_fails.append(decoy_failed)
+        other_all_best_ratio.append(decoy_best_ratio)
+        other_all_fails_ratio.append(decoy_fail_ratio)
+        results_dict[motif_id] = (mean_best, best_ratio, failed, fail_ratio, random_query_instance,
+                                  decoy_mean_best, decoy_best_ratio, decoy_failed, decoy_fail_ratio)
     print(f'on average, {np.mean(all_fails):.4f} fails for a {np.mean(all_fails_ratio):.4f} ratio')
     print(f'And {np.mean(all_best):.4f} rank for a {np.mean(all_best_ratio):.4f} ratio')
     print(f'For random query, {np.mean(other_all_fails):.4f} fails for a {np.mean(other_all_fails_ratio):.4f} ratio')
     print(f'And {np.mean(other_all_best):.4f} rank for a {np.mean(other_all_best_ratio):.4f} ratio')
-    return all_fails, all_best
+    return results_dict
 
 
 def ged_computing(motifs, mg, depth=1):
@@ -635,16 +637,17 @@ if __name__ == '__main__':
     # json_graph = load_json('../data/graphs/all_graphs/1a34.json')
 
     # Load meta-graph model
-    model_name = '../results/mggs/' + args.run + '.p'
-    # print(model_name)
+    model_name = f'../results/mggs/{args.run}.p'
     mgg = pickle.load(open(model_name, 'rb'))
     # nc, ec = mgg.statistics()
     # print(nc)
     # print(ec)
 
     # Use the retrieve to get hit ratio
-    all_failed, all_res = hit_ratio_all(pruned_motifs, mgg, max_instances_to_look_for=3)
-    # all_failed, all_res = ab_testing(pruned_motifs, mgg)
+    # print(len(pruned_motifs))
+    # all_failed, all_res = hit_ratio_all(pruned_motifs, mgg, max_instances_to_look_for=None)
+    results_dict = ab_testing(pruned_motifs, mgg)
+    pickle.dump(results_dict, open(f'../results/results_dict_{args.run}.p', 'wb'))
     print(f"this is the result for {args.run}")
 
     # sample_motif = pruned_motifs['63']
