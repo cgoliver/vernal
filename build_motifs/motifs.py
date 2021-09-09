@@ -11,6 +11,7 @@ import networkx as nx
 from tools.graph_utils import whole_graph_from_node
 from tools.graph_utils import has_NC_bfs
 
+graph_cache = dict()
 
 def def_set():
     return defaultdict(set)
@@ -172,31 +173,47 @@ def maga(mgraph, levels=10, graph_dir="../data/graphs"):
     print(">>> Building MAGA graph.")
     for n in maga_graph.nodes():
         maga_graph.nodes[n]['node_set'] = set()
+        
     for c1, c2, d in tqdm(maga_graph.edges(data=True)):
+        for u, v, _ in d['edge_set']:
+            assert u != v, f"{c1}-{c2}, {u}, {v}"
         maga_graph[c1][c2]['edge_set'] = {frozenset([u, v]) for u, v, _ in d['edge_set']}
-        for u, v in d['edge_set']:
+
+        inner = 0
+        for uv in d['edge_set']:
+            print(c1, c2, uv)
+            u, v = uv
 
             maga_adj[u][mgraph.labels[v]].add(v)
             maga_adj[v][mgraph.labels[u]].add(u)
 
+            """
             for node in (u, v):
                 clust = mgraph.labels[node]
                 if boring_clusters[clust]['samples'] < n_boring_samples:
                     boring_clusters[clust]['samples'] += 1
                     node_id = mgraph.reversed_node_map[node]
                     try:
-                        G = whole_graph_from_node(node_id, graph_dir=graph_dir)
-                    except FileNotFoundError:
-                        print(f"Missing {node_id}")
-                        continue
+                        pdbid = node_id.split(".")[0]
+                        G = graph_cache[pdbid]
+                    except KeyError:
+                        try:
+                            print("loading")
+                            G = whole_graph_from_node(node_id, graph_dir=graph_dir)
+                            graph_cache[pdbid] = G
+                        except FileNotFoundError:
+                            print(f"Missing {node_id}")
+                            continue
                     if not has_NC_bfs(G, node_id, depth=1):
                         boring_clusters[clust]['boring'] += 1
+            """
 
             u_node = ms.FrozenMultiset([mgraph.labels[u]])
             v_node = ms.FrozenMultiset([mgraph.labels[v]])
             maga_graph.nodes[u_node]['node_set'].add(frozenset([u]))
             maga_graph.nodes[v_node]['node_set'].add(frozenset([v]))
 
+    # a boring node has no NC edges
     # consider a cluster boring if at at least 80% of instances are boring
     boring_clusters = {clust for clust, counts in boring_clusters.items() \
                        if counts['boring'] / counts['samples'] > .8}
