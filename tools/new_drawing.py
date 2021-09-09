@@ -45,6 +45,13 @@ def process_axis(axis,
     pos = circular_layout(g)
     # pos = nx.spring_layout(g)
 
+    # # Small modif because arrows are buggy right now, just remove B35
+    # to_remove = list()
+    # for n1, n2, d in g.edges(data=True):
+    #     if d[label] == 'B35':
+    #         to_remove.append((n1, n2))
+    # g.remove_edges_from(to_remove)
+
     if not node_color is None:
         nodes = nx.draw_networkx_nodes(g, pos, node_size=150, node_color=node_color, linewidths=2, ax=axis)
     else:
@@ -71,7 +78,8 @@ def process_axis(axis,
             continue
 
     non_bb_edges = [(n1, n2) for n1, n2, d in g.edges(data=True) if d[label][0] != 'B']
-    bb_edges = [(n1, n2) for n1, n2, d in g.edges(data=True) if d[label][0] == 'B']
+    bb_edges = [(n1, n2) for n1, n2, d in g.edges(data=True) if d[label][0] == 'B' and d[label][1]=='5']
+    # bb_edges = [(n1, n2) for n1, n2, d in g.edges(data=True) if d[label][0] == 'B']
 
     nx.draw_networkx_edges(g, pos, edgelist=non_bb_edges, ax=axis)
     # nx.draw_networkx_edges(g, pos, edge_color="red", edgelist=non_bb_edges, ax=axis)
@@ -169,7 +177,7 @@ def rna_draw_pair(graphs, subtitles=None, highlight_edges=None, node_colors=None
 
 
 def rna_draw_grid(graphs, subtitles=None, highlight_edges=None, node_colors=None, row_labels=None,
-                  save=None, show=False, grid_shape=None):
+                  save=None, show=False, grid_shape=None, title=None):
     """
     Plot a line of plots of graphs along with a value for each graph. Useful for graph comparison vizualisation
     :param graphs: list of lists containing nx graphs all lists must have the same dimension along axis 1. To skip a cell, add a None instead of graph.
@@ -202,6 +210,8 @@ def rna_draw_grid(graphs, subtitles=None, highlight_edges=None, node_colors=None
             a.set_ylabel(row, rotation=0)
 
     plt.axis('off')
+    if title is not None:
+        plt.xlabel(title)
     if save:
         plt.savefig(save, format='pdf')
     if show:
