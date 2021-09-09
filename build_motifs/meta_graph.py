@@ -100,7 +100,7 @@ class MGraph:
         print(f"Variance fails {var_fails}, Count fails {count_fails}")
         pass
 
-    def retrieve(self, motif):
+    def retrieve_deprecated(self, motif):
         """
         Start with a motif representative : a list of nodes that make motif.
         Build the query graph :
@@ -733,8 +733,10 @@ class MGraphAll(MGraph):
             if node_clust in self.graph.nodes():
                 query_nodes.add((motif_node, node_clust))
 
+        # Then we make the graph undirected if needed and add edges
         if nx_motif.is_directed() and self.convert_undirected:
             nx_motif = to_undirected(nx_motif)
+
         query_edges = set()
         for i, (start_node, end_node) in enumerate(nx_motif.edges()):
             # Get edges id with a random 'start node' identifier to enable duplicates of clust to clust edge

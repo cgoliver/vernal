@@ -15,7 +15,7 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 if __name__ == "__main__":
     sys.path.append(os.path.join(script_dir, '..'))
 
-from tools.graph_utils import whole_graph_from_node, has_NC, induced_edge_filter
+from tools.graph_utils import whole_graph_from_node, has_NC, induced_edge_filter, bfs_expand
 from tools.learning_utils import inference_on_graph_run
 from tools.new_drawing import rna_draw, rna_draw_pair, rna_draw_grid
 from build_motifs.meta_graph import MGraph, MGraphAll
@@ -214,7 +214,6 @@ def trim(instance, depth=1, whole_graph=None):
     if whole_graph is None:
         whole_graph = whole_graph_from_node(instance[0])
     out_border = get_outer_border(instance, whole_graph)
-
     # get the last depth ones as well as the cumulative set
     cummulative, last = out_border, out_border
     for d in range(depth):
@@ -242,16 +241,16 @@ def trim_try(whole_graph, instance, depth=1):
     # Start with empty graph.
     # Then the successive graphs are supposedly bigger up until they are not empty
     while not trimmed_graph.edges():
+        if depth < 1:
+            trimmed = instance
+            trimmed_graph = whole_graph.subgraph(instance)
+            return trimmed, trimmed_graph, depth
         trimmed = trim(instance, depth=depth, whole_graph=whole_graph)
         trimmed_graph = whole_graph.subgraph(trimmed)
         # print('total edges : ', len(trimmed_graph.edges()))
         # print('depth : ', depth)
-        if depth < 1:
-            trimmed = instance
-            trimmed_graph = whole_graph.subgraph(instance)
-            break
         depth -= 1
-    return trimmed, trimmed_graph, depth
+    return trimmed, trimmed_graph, depth + 1
 
 
 def plot_instance(instance, source_graph=None):
@@ -484,7 +483,16 @@ def parse_ab_testing(results_dict):
 
     for motif_id, (mean_best, best_ratio, failed, fail_ratio, random_query_instance, decoy_mean_best, decoy_best_ratio,
                    decoy_failed, decoy_fail_ratio) in results_dict.items():
-        print(motif_id)
+        if not motif_id[0] == 'carnaval':
+            # if not motif_id[0]=='bgsu':
+            continue
+        # print(f"{motif_id}, "
+        #       # f"success rate {1-fail_ratio:1f}, "
+        #       # f" decoy success rate {1-decoy_fail_ratio:1f}, "
+        #       f"mean rank :{best_ratio:.2f}, "
+        #       f"decoy mean rank :{decoy_best_ratio:.2f}, "
+        #       f"ratio mean rank :{best_ratio/(decoy_best_ratio+0.001):.3f}"
+        #       )
         all_best.append(mean_best)
         all_fails.append(failed)
         all_best_ratio.append(best_ratio)
@@ -500,7 +508,44 @@ def parse_ab_testing(results_dict):
     print(f'And {np.mean(other_all_best):.4f} rank for a {np.mean(other_all_best_ratio):.4f} ratio')
 
 
-def ged_computing(motifs, mg, depth=1):
+def match_sizes(graph_to_match, in_graph, whole_in_graph):
+    """
+    Take the in_graph and trim it up until it is smaller than the 'graph to match'.
+    Then expand it to make it a bit bigger
+    """
+    # print('before anything', in_graph.nodes(), len(in_graph.nodes()))
+    # If it's too big, make it smaller, nothing happens if already small
+    in_graph_nodes = in_graph.nodes()
+    counts = 0
+    while len(in_graph_nodes) > len(graph_to_match):
+        temp_in_graph_nodes = trim(instance=in_graph_nodes,
+                                   depth=1,
+                                   whole_graph=whole_in_graph)
+        if len(temp_in_graph_nodes) <= 0 or counts > 5:
+            break
+        else:
+            in_graph_nodes = temp_in_graph_nodes
+        counts += 1
+    in_graph = in_graph.subgraph(in_graph_nodes)
+    # print('after making smaller', in_graph.nodes(), len(in_graph.nodes()))
+    # If it's too small make the opposite, we do not need to update the depth in the loop as we start
+    # from a larger and larger set of nodes.
+    # Successive growth is fairer, as the border nodes are not connected with one another
+    counts = 0
+    while len(in_graph_nodes) < len(graph_to_match):
+        in_graph = induced_edge_filter(whole_in_graph, in_graph_nodes, depth=1)
+        in_graph_nodes = in_graph.nodes()
+        counts += 1
+        if counts > 5:
+            break
+    # print('after making bigger', in_graph.nodes(), len(in_graph.nodes()))
+    return in_graph
+
+
+def ged_computing(motifs, mg, depth=1, expand_hit=True, timeout=2, draw_pairs=True):
+    """
+    :param expand_hit: To use if we want to compare the actual whole query with the expanded retrieve solutions
+    """
     from tools.rna_ged_nx import ged
     res_dict = dict()
     all_motifs = [(motif_id, motif) for motif_id, motif in motifs.items()]
@@ -510,20 +555,34 @@ def ged_computing(motifs, mg, depth=1):
         # if int(motif_id) != 4:
         #     continue
 
-        # Get the hits
+        # Get all relevant graphs, the border around the instance as well as a potential trimming
         print('attempting id : ', motif_id)
         query_instance = motif[0]
         query_whole_graph = whole_graph_from_node(query_instance[0])
-        retrieved_instances = retrieve_instances(query_instance=query_instance, mg=mg, depth=depth)
+        trimmed, trimmed_graph, actual_depth = trim_try(whole_graph=query_whole_graph, instance=query_instance,
+                                                        depth=depth)
+        query_instance_graph_expanded = induced_edge_filter(G=query_whole_graph, roots=query_instance)
+
+        # Gives a hint of how trimming an instance works :
+        # removing border nodes can remove more than the neighbors and
+        # adding back the depth can add more than the original nodes
+        # colors = ['red' if n in trimmed
+        #           else 'blue' if n in query_instance
+        # else 'grey' for n in expanded_graphs.nodes()]
+        # rna_draw(g=expanded_graphs, node_colors=colors)
+        # plt.show()
+        # sys.exit()
+
+        # Get the hits
+        retrieved_instances = mg.retrieve_2(trimmed)
         sorted_hits = sorted(list(retrieved_instances.items()), key=lambda x: -x[1])
 
-        # Get the actual query that was used (because of trimming) and expand it with the depth
-        # This is V2, the original one was just computing between the trimmed and the reduced hit
-        # trimmed, trimmed_graph = trim_try(whole_graph=query_whole_graph, instance=query_instance)
-        # query_instance_graph = query_whole_graph.subgraph(query_instance)
-        trimmed, trimmed_graph, actual_depth = trim_try(whole_graph=query_whole_graph, instance=query_instance)
-        query_instance_graph = induced_edge_filter(query_whole_graph, trimmed, depth=actual_depth)
+        if expand_hit:
+            query_instance_graph = query_whole_graph.subgraph(query_instance)
+        else:
+            query_instance_graph = trimmed_graph
 
+        hit_graph = []
         plot_index = [0, 10, 100, 1000]
         for j in plot_index:
             # In case we have less than 1000 hits
@@ -532,54 +591,91 @@ def ged_computing(motifs, mg, depth=1):
             except IndexError:
                 continue
             hit = [mg.reversed_node_map[node] for node in hit]
-            # print(hit)
             hit_whole_graph = whole_graph_from_node(hit[0])
 
             # If one changes this, one should also remove the query expansion
-            hit_graph = induced_edge_filter(hit_whole_graph, hit, depth=actual_depth)
-            # hit_graph = whole_graph_from_node(hit[0]).subgraph(hit)
+            if expand_hit:
+                hit_graph = induced_edge_filter(hit_whole_graph, hit, depth=actual_depth)
+            else:
+                hit_graph = hit_whole_graph.subgraph(hit)
+
             start = time.perf_counter()
-            ged_value = ged(query_instance_graph, hit_graph, timeout=2)
-            print(j, len(query_instance_graph), len(hit_graph), ged_value, time.perf_counter() - start)
-            # res_dict[j].append(ged_value)
+            ged_value = ged(query_instance_graph, hit_graph, timeout=timeout)
+            print(f"{j}-th hit, query : {len(query_instance_graph)}, hit : {len(hit_graph)}, "
+                  f"ged value : {ged_value}, time : {time.perf_counter() - start:.2f}")
             inner_dict[j] = ged_value
 
             # TO PLOT THE HITS
-            # expanded = hit
-            # if depth > 0:
-            #     out_border = get_outer_border(hit, hit_whole_graph)
-            #     expanded = hit + list(out_border)
-            # expanded_graph = hit_whole_graph.subgraph(expanded)
-
-            colors = [['red' if n in trimmed else 'grey' for n in query_instance_graph.nodes()],
-                      ['red' if n in hit else 'grey' for n in hit_graph.nodes()]]
-            subtitles = ('', ged_value)
-            rna_draw_pair((query_instance_graph, hit_graph), node_colors=colors, subtitles=subtitles)
-            plt.show()
+            if draw_pairs:
+                hit_graph_expanded = induced_edge_filter(hit_whole_graph, hit, depth=actual_depth)
+                trimmed_graph_expanded = induced_edge_filter(query_whole_graph, trimmed, depth=actual_depth)
+                if not expand_hit:
+                    # Just expand around the trims and hits
+                    colors_query = ['red' if n in trimmed else 'grey' for n in trimmed_graph_expanded.nodes()]
+                    colors_hit = ['red' if n in hit else 'grey' for n in hit_graph_expanded.nodes()]
+                    colors = [colors_query, colors_hit]
+                    subtitles = ('', ged_value)
+                    rna_draw_pair((trimmed_graph_expanded, hit_graph_expanded), node_colors=colors, subtitles=subtitles)
+                    plt.show()
+                else:
+                    # Then expand again to have the trim, the border and the context
+                    hit_graph_expanded_twice = induced_edge_filter(hit_whole_graph, hit, depth=actual_depth + 1)
+                    colors_query = ['red' if n in trimmed else 'blue' if n in query_instance
+                    else 'grey' for n in query_instance_graph_expanded.nodes()]
+                    colors_hit = ['red' if n in hit else 'blue' if n in hit_graph_expanded.nodes()
+                    else 'grey' for n in hit_graph_expanded_twice.nodes()]
+                    colors = [colors_query, colors_hit]
+                    subtitles = ('', ged_value)
+                    rna_draw_pair((query_instance_graph_expanded, hit_graph_expanded_twice),
+                                  node_colors=colors, subtitles=subtitles)
+                    plt.show()
 
         # Pick another random that is not the current graph
         other_random = random.randint(0, len(all_motifs) - 2)
         if other_random >= i:
             other_random += 1
         random_query_instance = all_motifs[other_random][1][0]
-        # random_graph = whole_graph_from_node(random_query_instance[0]).subgraph(random_query_instance)
-        random_graph = induced_edge_filter(whole_graph_from_node(random_query_instance[0]),
-                                           random_query_instance, depth=actual_depth)
+        random_graph_whole = whole_graph_from_node(random_query_instance[0])
+        random_graph = random_graph_whole.subgraph(random_query_instance)
+        random_graph_0 = random_graph.copy()
+
+        # Extra step to trim the other motif to get a similar size
+        random_graph = match_sizes(graph_to_match=query_instance_graph,
+                                   in_graph=random_graph,
+                                   whole_in_graph=random_graph_whole)
+
+        start = time.perf_counter()
+        ged_value_random = ged(query_instance_graph, random_graph, timeout=timeout)
+        print(f"random, query : {len(query_instance_graph)}, random : {len(random_graph)}, "
+              f"ged value : {ged_value_random}, time : {time.perf_counter() - start:.2f}")
+        ged_value_random_old = ged(query_instance_graph, random_graph_0, timeout=timeout)
+        print(f"random_old, query : {len(query_instance_graph)}, random : {len(random_graph_0)}, "
+              f"ged value : {ged_value_random_old}, time : {time.perf_counter() - start:.2f}")
+        print()
+        inner_dict['random_other'] = ged_value_random
+        inner_dict['random_other_old'] = ged_value_random_old
 
         # TO PLOT THE RANDOM
-        # colors = [['red' if n in trimmed else 'grey' for n in query_instance_graph.nodes()],
-        #           ['grey' for n in random_graph.nodes()]]
-        # rna_draw_pair((query_instance_graph, random_graph), node_colors=colors)
-        # plt.show()
+        if draw_pairs:
+            colors = [['red' if n in trimmed else 'grey' for n in query_instance_graph.nodes()],
+                      ['grey' for _ in random_graph.nodes()]]
+            subtitles = ('', ged_value_random)
+            rna_draw_pair((query_instance_graph, random_graph), node_colors=colors, subtitles=subtitles)
+            plt.show()
 
-        # res_dict['random_other'].append(ged(query_instance_graph, random_graph, timeout=5))
-        start = time.perf_counter()
-        inner_dict['random_other'] = (ged(query_instance_graph, random_graph, timeout=2))
-        print('random', len(trimmed_graph), len(hit_graph), inner_dict['random_other'], time.perf_counter() - start)
         print(inner_dict)
         res_dict[motif_id] = inner_dict
 
     return res_dict
+
+
+def collapse_res_dict(res_dict):
+    import pandas as pd
+    df = pd.DataFrame()
+    for motif, dict_value in res_dict.items():
+        dict_value['motif'] = motif
+        df = df.append(dict_value, ignore_index=True)
+    return df
 
 
 def draw_smooth(motif, mg, depth=1, save=None):
@@ -669,7 +765,7 @@ if __name__ == '__main__':
 
     # Use the retrieve to get hit ratio
     # print(len(pruned_motifs))
-    all_failed, all_res = hit_ratio_all(pruned_motifs, mgg, max_instances_to_look_for=1)
+    # all_failed, all_res = hit_ratio_all(pruned_motifs, mgg, max_instances_to_look_for=3)
     # results_dict = ab_testing(pruned_motifs, mgg)
     # pickle.dump(results_dict, open(f'../results/results_dict_{args.run}.p', 'wb'))
     # print(f"this is the result for {args.run}")
@@ -689,6 +785,16 @@ if __name__ == '__main__':
     #         break
     # draw_smooth(sample_motif, mgg)
 
-    # res_dict_ged = ged_computing(motifs=pruned_motifs, mg=mgg)
+    # subsample
+    keys = random.sample(pruned_motifs.keys(), 50)
+    subsampled_pruned = {k: pruned_motifs[k] for k in keys}
+    # subsampled_pruned.pop(('carnaval', '79'))
+    # print(subsampled_pruned)
+    res_dict_ged = ged_computing(motifs=subsampled_pruned, mg=mgg,
+                                 timeout=10, expand_hit=False, draw_pairs=False)
     # print(res_dict_ged)
-    # pickle.dump(res_dict_ged, open('res_dict_ged.p', 'wb'))
+    pickle.dump(res_dict_ged, open('res_dict_ged.p', 'wb'))
+    res_dict_ged = pickle.load(open('res_dict_ged.p', 'rb'))
+    df_res = collapse_res_dict(res_dict_ged)
+    print(df_res)
+    print(df_res.mean())

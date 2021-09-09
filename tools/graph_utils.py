@@ -81,6 +81,11 @@ def induced_edge_filter(G, roots, depth=1):
         Only keep edges which fall within a single
         node's neighbourhood.
 
+        for instance : 1 - 2
+                       |   |
+                       3 - 4
+        When expanding from {1, 2}, you don't want the edge 3-4.
+
         :param G: networkx subgraph
         :param roots: nodes to use for filtering
         :param depth: size of neighbourhood to take around each node.
@@ -88,7 +93,7 @@ def induced_edge_filter(G, roots, depth=1):
     """
     # a depth of zero does not make sense for this operation as it would remove all edges
     if depth < 1:
-        depth = 1
+        return G.subgraph(roots).copy()
     neighbourhoods = []
     flat_neighbors = set()
     for root in roots:

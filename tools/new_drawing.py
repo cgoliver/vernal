@@ -73,7 +73,8 @@ def process_axis(axis,
     non_bb_edges = [(n1, n2) for n1, n2, d in g.edges(data=True) if d[label][0] != 'B']
     bb_edges = [(n1, n2) for n1, n2, d in g.edges(data=True) if d[label][0] == 'B']
 
-    nx.draw_networkx_edges(g, pos, edge_color="red", edgelist=non_bb_edges, ax=axis)
+    nx.draw_networkx_edges(g, pos, edgelist=non_bb_edges, ax=axis)
+    # nx.draw_networkx_edges(g, pos, edge_color="red", edgelist=non_bb_edges, ax=axis)
     # nx.draw_networkx_edges(g, pos, edge_color="red", connectionstyle="arc3,rad=0.1", edgelist=non_bb_edges, ax=axis)
     nx.draw_networkx_edges(g, pos, edgelist=bb_edges, width=2, ax=axis)
 
