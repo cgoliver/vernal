@@ -550,6 +550,7 @@ def ged_computing(motifs, mg, depth=1, expand_hit=True, timeout=2, draw_pairs=Tr
     res_dict = dict()
     all_motifs = [(motif_id, motif) for motif_id, motif in motifs.items()]
     for i, (motif_id, motif) in enumerate(all_motifs):
+        motif_time = time.perf_counter()
         inner_dict = {}
 
         # if motif_id != ('bgsu', 'HL_50622.1'):
@@ -649,7 +650,8 @@ def ged_computing(motifs, mg, depth=1, expand_hit=True, timeout=2, draw_pairs=Tr
                 else:
                     all_graphs.append(graph_plot_hit.copy())
                     all_colors.append(colors_hit.copy())
-                    all_subtitles.append(f'{j}-th hit with score : {sorted_hits[j][1]:2.2f} \n and ged : {ged_value:.1f}')
+                    all_subtitles.append(
+                        f'{j}-th hit with score : {sorted_hits[j][1]:2.2f} \n and ged : {ged_value:.1f}')
 
         if draw_grid:
             rna_draw_grid(graphs=all_graphs, node_colors=all_colors, subtitles=all_subtitles,
@@ -679,6 +681,7 @@ def ged_computing(motifs, mg, depth=1, expand_hit=True, timeout=2, draw_pairs=Tr
         print()
         inner_dict['random_other'] = ged_value_random
         inner_dict['random_other_old'] = ged_value_random_old
+        inner_dict['motif_time'] = time.perf_counter() - motif_time
 
         # TO PLOT THE RANDOM
         if draw_pairs:
@@ -701,6 +704,7 @@ def collapse_res_dict(res_dict):
         dict_value['motif'] = motif
         df = df.append(dict_value, ignore_index=True)
     return df
+
 
 if __name__ == '__main__':
     pass
@@ -748,9 +752,10 @@ if __name__ == '__main__':
     # print(subsampled_pruned)
     res_dict_ged = ged_computing(motifs=subsampled_pruned, mg=mgg,
                                  timeout=100, expand_hit=False, draw_pairs=False, draw_grid=False)
-    # print(res_dict_ged)
-    # pickle.dump(res_dict_ged, open('res_dict_ged.p', 'wb'))
-    # res_dict_ged = pickle.load(open('res_dict_ged.p', 'rb'))
-    # df_res = collapse_res_dict(res_dict_ged)
-    # print(df_res)
-    # print(df_res.mean())
+    print(res_dict_ged)
+    pickle.dump(res_dict_ged, open('res_dict_ged.p', 'wb'))
+    res_dict_ged = pickle.load(open('res_dict_ged.p', 'rb'))
+    df_res = collapse_res_dict(res_dict_ged)
+    print(df_res)
+    print(df_res.mean())
+    print(df_res.std())
