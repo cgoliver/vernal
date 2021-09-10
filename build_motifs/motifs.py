@@ -175,13 +175,10 @@ def maga(mgraph, levels=10, graph_dir="../data/graphs"):
         maga_graph.nodes[n]['node_set'] = set()
         
     for c1, c2, d in tqdm(maga_graph.edges(data=True)):
-        for u, v, _ in d['edge_set']:
-            assert u != v, f"{c1}-{c2}, {u}, {v}"
         maga_graph[c1][c2]['edge_set'] = {frozenset([u, v]) for u, v, _ in d['edge_set']}
 
         inner = 0
         for uv in d['edge_set']:
-            print(c1, c2, uv)
             u, v = uv
 
             maga_adj[u][mgraph.labels[v]].add(v)

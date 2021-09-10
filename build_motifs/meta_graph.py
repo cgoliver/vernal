@@ -672,6 +672,8 @@ class MGraphAll(MGraph):
         for graph_name in os.listdir(self.graph_dir)[:max_graphs]:
             graph_path = os.path.join(self.graph_dir, graph_name)
             g = fetch_graph(graph_path)
+            # rare nodes have self loops..
+            g.remove_edges_from(nx.selfloop_edges(g))
             if g.is_directed() and self.convert_undirected:
                 g = to_undirected(g)
             for start_node, end_node in g.edges():
@@ -700,6 +702,9 @@ class MGraphAll(MGraph):
                     self.graph.add_edge(start_clust, end_clust, edge_set=set())
 
                 # self.graph.edges[(start_clust, end_clust)]['edge_set'].add((start_node, end_node, 1))
+                assert start_node != end_node, f"nodes: {start_node}, {end_node}, clusters: {start_clust}, {end_clust} "
+                assert start_id != end_id, f"nodes: {start_id}, {end_id}, clusters: {start_clust}, {end_clust} "
+
                 self.graph.edges[(start_clust, end_clust)]['edge_set'].add((start_id, end_id, 1))
 
         # Filtering and hashing

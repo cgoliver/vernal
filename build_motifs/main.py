@@ -111,6 +111,9 @@ def build_motifs(mgraph, args):
                       levels=args.levels, 
                       graph_dir=args.graphs
                       )
+    print(f"Dumping MAGA graph in results/mggs/{args.mgg_name}")
+    pickle.dump(maga_graph, open(os.path.join("results", "magas", args.mgg_name + '.p'),
+                          'wb'))
     pass
 
 def retrieve():
