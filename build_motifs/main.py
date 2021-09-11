@@ -109,10 +109,12 @@ def build_motifs(mgraph, args):
     from build_motifs.motifs import maga
     maga_graph = maga(mgraph, 
                       levels=args.levels, 
-                      graph_dir=args.graphs
+                      graph_dir=args.graphs,
+                      min_edge=args.min_edge
                       )
+    mgraph.maga_graph = maga_graph
     print(f"Dumping MAGA graph in results/mggs/{args.mgg_name}")
-    pickle.dump(maga_graph, open(os.path.join("results", "magas", args.mgg_name + '.p'),
+    pickle.dump(mgraph, open(os.path.join("results", "magas", args.mgg_name + '.p'),
                           'wb'))
     pass
 

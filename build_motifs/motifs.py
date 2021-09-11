@@ -145,7 +145,11 @@ def maga_next(maga_graph,
         yield maga_graph
 
 
-def maga(mgraph, levels=10, graph_dir="../data/graphs"):
+def maga(mgraph, 
+         levels=10, 
+         graph_dir="../data/graphs",
+         min_edge=100
+         ):
     print(f">>> Meta-graph has {len(mgraph.graph.nodes())} nodes",
           f"and {len(mgraph.graph.edges())} edges.")
     maga_graph = nx.relabel_nodes(mgraph.graph,
@@ -221,7 +225,8 @@ def maga(mgraph, levels=10, graph_dir="../data/graphs"):
                            maga_adj,
                            mgraph,
                            boring_clusters,
-                           levels=levels)
+                           levels=levels,
+                           min_edge=min_edge)
     for l, maga_graph in enumerate(maga_build):
         print("maga level ", l)
         print("maga nodes ", len(maga_graph.nodes()),

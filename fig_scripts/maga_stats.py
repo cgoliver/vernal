@@ -11,12 +11,12 @@ if __name__ == "__main__":
 
 from build_motifs.meta_graph import *
 
-def get_stats(maga_graph):
-    num_nodes = len(maga_graph.nodes())
+def get_stats(mgg):
+    num_nodes = len(mgg.maga_graph.nodes())
 
     n_instances = defaultdict(list)
 
-    for node, data in maga_graph.nodes(data=True):
+    for node, data in mgg.maga_graph.nodes(data=True):
         try:
             n_instances[len(node)].append(len(data['node_set']))
         except KeyError:
