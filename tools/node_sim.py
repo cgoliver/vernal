@@ -239,6 +239,7 @@ class SimFunctionNode():
                 mi, ma = minmax((feat_1[e], feat_2[e]))
                 num += w * mi
                 den += w * ma
+                # print(e, w, mi, ma, num, den)
             return num / den
 
         else:

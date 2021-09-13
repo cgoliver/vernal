@@ -213,6 +213,8 @@ def rna_draw_grid(graphs, subtitles=None, highlight_edges=None, node_colors=None
     if title is not None:
         plt.xlabel(title)
     if save:
+        plt.tight_layout()
+        plt.figsize(('10,10'))
         plt.savefig(save, format='pdf')
     if show:
         plt.show()
