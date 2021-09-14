@@ -23,9 +23,6 @@ class V1(Dataset):
     def __init__(self,
                  node_simfunc,
                  annotated_path='../data/annotated/samples',
-                 depth=3,
-                 debug=False,
-                 shuffled=False,
                  ):
 
         self.path = annotated_path
