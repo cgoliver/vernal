@@ -91,7 +91,7 @@ def motif_eval(mgg,
                 # compute instance coverage, percentage of motif instance recovered
                 motif_size = len(external_motifs[m][0])
                 n_instances_motif = len(external_motifs[m])
-                if n_instances_motif < 10:
+                if n_instances_motif < 20:
                     continue
                 maga_size = len(instance_nodes)
 

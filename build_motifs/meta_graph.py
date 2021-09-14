@@ -70,7 +70,7 @@ class MGraph:
         graphsets = defaultdict(list)
         for s in nodesets:
             node_id = self.reversed_node_map[list(s)[0]]
-            graph_id = node_id[0]
+            graph_id = node_id.split("_")[0]
             graphsets[graph_id].append(s)
         return graphsets
 
@@ -615,8 +615,7 @@ class MGraphAll(MGraph):
         self.node_map = model_output['node_to_zind']
         self.reversed_node_map = model_output['zind_to_node']
 
-        print(f'The size of the embeddings tensor is {len(Z)}. It should be equal to the total number of nodes.')
-
+        print(f"Clustering on {n_components} components with {clust_algo}.")
         clust_info = cluster(Z,
                              algo=clust_algo,
                              optimize=optimize,
@@ -657,6 +656,8 @@ class MGraphAll(MGraph):
         print("Clustered")
 
         self.graph = nx.Graph()
+
+        print(f"Got {len(self.components)} clusters.")
 
         # don't keep clusters that are too sparse or not populated enough
         # keep_clusts = cluster_filter(clusts, cov, self.min_count, self.max_var)

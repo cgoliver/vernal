@@ -153,7 +153,9 @@ def maga(mgraph,
     print(f">>> Meta-graph has {len(mgraph.graph.nodes())} nodes",
           f"and {len(mgraph.graph.edges())} edges.")
     maga_graph = nx.relabel_nodes(mgraph.graph,
-                                  {n: ms.FrozenMultiset([n]) for n in mgraph.graph})
+                                  {n: ms.FrozenMultiset([n]) for n in \
+                                      mgraph.graph.nodes()
+                                  })
 
     maga_graph = maga_graph.to_directed()
 
