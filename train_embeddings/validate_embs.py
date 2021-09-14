@@ -33,7 +33,7 @@ from tools.rna_ged_nx import ged
 from tools.learning_utils import load_model
 
 
-def get_nodelist(graph_dir='../data/annotated/NR_chops_annot'):
+def get_nodelist(graph_dir='../data/annotated/NR_chops_annot', depth=2):
     """
     Get nodelist at random: sample 200 chopped graphs and then pick a random graph around a NC using rejection sampling
 
@@ -51,12 +51,12 @@ def get_nodelist(graph_dir='../data/annotated/NR_chops_annot'):
         random.shuffle(inner_graph_nodelist)
         found_nc = False
         for node in inner_graph_nodelist:
-            if has_NC_bfs(graph=graph, node_id=node):
+            if has_NC_bfs(graph=graph, node_id=node, depth=depth):
                 found_nc = True
                 break
         if not found_nc:
             continue
-        subg = list(bfs_expand(graph, [node], depth=2)) + [node]
+        subg = list(bfs_expand(graph, [node], depth=depth)) + [node]
         subgraph = graph.subgraph(subg).copy()
         rings_edge = rings['edge'][node]
         rings_graphlet = rings['graphlet'][node]
@@ -247,16 +247,18 @@ if __name__ == "__main__":
     random.seed(0)
     np.random.seed(0)
     dump_dir = '../results/correlations'
+
     # Get the nodelist
-    n_hops = 2
-    # node_list = get_nodelist()
-    # pickle.dump(node_list, open(f'{dump_dir}/nodelist_{n_hops}hop.p', 'wb'))
+    n_hops = 1
+    node_list = get_nodelist(depth=n_hops)
+    pickle.dump(node_list, open(f'{dump_dir}/nodelist_{n_hops}hop.p', 'wb'))
     node_list = pickle.load(open(f'{dump_dir}/nodelist_{n_hops}hop.p', 'rb'))
 
     # Compute GED between graphlets
-    # ged_matrix = get_geds(node_list=node_list)
-    # pickle.dump(ged_matrix, open(f'{dump_dir}/ged_matrix_{n_hops}hop.p', 'wb'))
+    ged_matrix = get_geds(node_list=node_list)
+    pickle.dump(ged_matrix, open(f'{dump_dir}/ged_matrix_{n_hops}hop.p', 'wb'))
     ged_matrix = pickle.load(open(f'{dump_dir}/ged_matrix_{n_hops}hop.p', 'rb'))
+    ged_matrix = np.exp(- np.array(ged_matrix) / np.mean(ged_matrix))
 
     # Compute kernel values for a list of experiments and correlate them with the GED
     get_kernel_correlations = True
@@ -286,7 +288,15 @@ if __name__ == "__main__":
             for expe_dict in all_experiments:
                 df = df.append(expe_dict, ignore_index=True)
             df = df.sort_values(by=f'{n_hops}_hop_correlation', ascending=False)
-            print(df)
+            df = df[["method", "decay", "idf", "normalization",
+                     f"{n_hops}_hop_correlation", f"{n_hops}_hop_correlation_thresh"]]
+            df = df.rename(columns={"method": "Method",
+                                    "decay": "Decay",
+                                    "idf": "IDF",
+                                    "normalization": "Normalization",
+                                    f"{n_hops}_hop_correlation": "Correlation",
+                                    f"{n_hops}_hop_correlation_thresh": "Thresholded Correlation"
+                                    })
             print(df.to_latex(index=False))
 
     # Compute the correlation, now using the embeddings obtained with our model, and do the same.

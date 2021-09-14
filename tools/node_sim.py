@@ -467,6 +467,11 @@ class SimFunctionNode():
                     ringlist.append((value, k))
             return ringlist
 
+        # Small heuristic, just take the normalized ged value
+        if self.depth == 1:
+            return self.normalize(self.graphlet_cost_nodes(rings1[0][0], rings2[0][0], pos=False, similarity=True),
+                                  length=1)
+
         ringlist1 = rings_to_lists_g(rings1, depth=self.depth)
         ringlist2 = rings_to_lists_g(rings2, depth=self.depth)
 
@@ -480,19 +485,8 @@ class SimFunctionNode():
         unnormalized /= 2
 
         length = self.get_length(ringlist1, ringlist2, graphlets=True)
-        return self.normalize(unnormalized, length)
-
-        '''
-        cost_matrix = np.array(
-            [[self.graphlet_cost_nodes(node_i, node_j, pos=True) for node_j in ringlist2] for node_i in ringlist1])
-
-        row_ind, col_ind = linear_sum_assignment(cost_matrix)
-
-        # This is a distance score, we turn in into a similarity with exp(-x)
-        cost_raw = cost_matrix[row_ind, col_ind].sum()
-        normed = np.exp(-cost_raw)
-        return normed
-        '''
+        normalized = self.normalize(unnormalized, length)
+        return normalized
 
     def graphlet_cost_nodes(self, node1, node2, pos=False, similarity=False):
         """

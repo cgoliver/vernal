@@ -27,7 +27,7 @@ from networkx.algorithms import betweenness_centrality
 from networkx.algorithms import core_number
 
 from struct import *
-# from tools.drawing import rna_draw, rna_draw_pair
+from tools.new_drawing import rna_draw, rna_draw_pair
 from tools.graph_utils import bfs_expand
 # from tools.rna_ged import ged
 from tools.rna_ged_nx import ged
@@ -40,6 +40,8 @@ from config.graph_keys import GRAPH_KEYS, TOOL
 #             'THH': 7, 'THS': 8, 'THW': 9, 'TSH': 8, 'TSS': 10, 'TSW': 11, 'TWH': 9, 'TWS': 11, 'TWW': 12}
 edge_map = GRAPH_KEYS['edge_map'][TOOL]
 indel_vector = [1 if e in ['B53', 'B35'] else 2 if e == 'CWW' else 3 for e in sorted(edge_map.keys())]
+
+
 # indel_vector = [1 if e == 'B53' else 2 if e == 'CWW' else 3 for e in sorted(edge_map.keys())]
 
 
@@ -176,7 +178,7 @@ def build_hash_table(graph_dir, hasher, graphlets=True,
 
 def GED_hashtable_hashed(h_G, h_H, GED_table, graphlet_table, normed=True,
                          max_edges=7,
-                         beta=.50,
+                         beta=1 / 5,
                          timeout=60,
                          similarity=False):
     """
