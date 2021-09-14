@@ -1,4 +1,5 @@
 import os
+import sys
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 
@@ -8,8 +9,8 @@ EDGE_MAP_RGLIB = {'B53': 0, 'cHH': 1, 'cHS': 2, 'cHW': 3, 'cSH': 4, 'cSS': 5, 'c
                   'tHH': 10, 'tHS': 11, 'tHW': 12, 'tSH': 13, 'tSS': 14, 'tSW': 15, 'tWH': 16, 'tWS': 17, 'tWW': 18,
                   'B35': 19, }
 
-EDGE_MAP_FR3D_REVERSE = {v:k for k,v in EDGE_MAP_FR3D.items()}
-EDGE_MAP_RGLIB_REVERSE = {v:k for k,v in EDGE_MAP_RGLIB.items()}
+EDGE_MAP_FR3D_REVERSE = {v: k for k, v in EDGE_MAP_FR3D.items()}
+EDGE_MAP_RGLIB_REVERSE = {v: k for k, v in EDGE_MAP_RGLIB.items()}
 
 CANONICALS_FR3D = {'B53', 'B35', 'CWW'}
 CANONICALS_RGLIB = {'B53', 'B35', 'cWW'}
@@ -18,8 +19,18 @@ IDF = {'TSS': 1.3508944643423815, 'TWW': 2.2521850545837103, 'CWW': 0.7302387734
        'CSS': 1.3562625353981017, 'TSH': 1.0617196804844624, 'THS': 1.0617196804844624, 'CSH': 1.6543492684466312,
        'CHS': 1.6543492684466312, 'THW': 1.3619066730630602, 'TWH': 1.3619066730630602, 'THH': 2.3624726636947186,
        'CWH': 2.220046456989285, 'CHW': 2.220046456989285, 'TSW': 2.3588208814802263, 'TWS': 2.3588208814802263,
-       'CWS': 2.0236918714028707, 'CHH': 4.627784875752877, 'CSW': 2.0236918714028707}
-IDF_RGLIB = {key[0].lower() + key[1:]: value for key, value in IDF.items()}
+       'CWS': 2.0236918714028707, 'CHH': 4.627784875752877, 'CSW': 2.0236918714028707, 'B35': 0.6931471805599453, }
+
+
+def change_key(key):
+    """
+    We just lower case the first letter if it is not a bb
+    """
+    start = key[0].lower() if key[0] != 'B' else key[0]
+    return start + key[1:]
+
+
+IDF_RGLIB = {change_key(key): value for key, value in IDF.items()}
 
 INDEL_VECTOR_FR3D = [1 if e[0] == 'B' else 2 if e == 'CWW' else 3 for e in sorted(EDGE_MAP_FR3D.keys())]
 INDEL_VECTOR_RGLIB = [1 if e[0] == 'B' else 2 if e == 'cWW' else 3 for e in sorted(EDGE_MAP_RGLIB.keys())]

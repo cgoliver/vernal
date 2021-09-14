@@ -554,7 +554,8 @@ def ged_computing(motifs, mg, depth=1, expand_hit=True, timeout=2, draw_pairs=Tr
         inner_dict = {}
 
         # if motif_id != ('bgsu', 'HL_50622.1'):
-        #     continue
+        if motif_id != ('carnaval', '7'):
+            continue
 
         # Get all relevant graphs, the border around the instance as well as a potential trimming
         print('attempting id : ', motif_id)
@@ -604,7 +605,6 @@ def ged_computing(motifs, mg, depth=1, expand_hit=True, timeout=2, draw_pairs=Tr
                 all_colors = [colors_query]
                 all_subtitles = ['Query']
 
-        hit_graph = []
         if draw_grid:
             plot_index = [10, 100, 1000]
         else:
@@ -651,7 +651,7 @@ def ged_computing(motifs, mg, depth=1, expand_hit=True, timeout=2, draw_pairs=Tr
                     all_graphs.append(graph_plot_hit.copy())
                     all_colors.append(colors_hit.copy())
                     all_subtitles.append(
-                        f'{j}-th hit with score : {sorted_hits[j][1]:2.2f} \n and ged : {ged_value:.1f}')
+                        f'{j}-th hit with Score : {sorted_hits[j][1]:2.2f} \n and GED : {ged_value:.1f}')
 
         if draw_grid:
             rna_draw_grid(graphs=all_graphs, node_colors=all_colors, subtitles=all_subtitles,
@@ -697,11 +697,12 @@ def ged_computing(motifs, mg, depth=1, expand_hit=True, timeout=2, draw_pairs=Tr
     return res_dict
 
 
-def collapse_res_dict(res_dict):
+def collapse_res_dict(res_dict, pruned_motifs):
     import pandas as pd
     df = pd.DataFrame()
     for motif, dict_value in res_dict.items():
         dict_value['motif'] = motif
+        dict_value['motif_len'] = len(pruned_motifs[motif][0])
         df = df.append(dict_value, ignore_index=True)
     return df
 
@@ -746,16 +747,27 @@ if __name__ == '__main__':
     # parse_ab_testing(results_dict)
 
     # Subsample and get GED values as well as grid drawing.
+    # We also use it to draw the smooth retrieve with draw_grid=True
     keys = random.sample(pruned_motifs.keys(), 50)
     subsampled_pruned = {k: pruned_motifs[k] for k in keys}
-    subsampled_pruned.pop(('carnaval', '79'))
-    # print(subsampled_pruned)
+    # subsampled_pruned.pop(('carnaval', '79'))
+    # # print(subsampled_pruned)
     res_dict_ged = ged_computing(motifs=subsampled_pruned, mg=mgg,
-                                 timeout=100, expand_hit=False, draw_pairs=False, draw_grid=False)
-    print(res_dict_ged)
-    pickle.dump(res_dict_ged, open('res_dict_ged.p', 'wb'))
+                                 timeout=100, expand_hit=False, draw_pairs=False, draw_grid=True)
+    # print(res_dict_ged)
+    # pickle.dump(res_dict_ged, open('res_dict_ged.p', 'wb'))
+
+    # Parse the results with pandas. Filter out the timeouts.
+    import pandas as pd
+
+    pd.set_option('display.max_rows', None)
     res_dict_ged = pickle.load(open('res_dict_ged.p', 'rb'))
-    df_res = collapse_res_dict(res_dict_ged)
-    print(df_res)
+    df_res = collapse_res_dict(res_dict_ged, pruned_motifs=pruned_motifs)
+    df_res = df_res.sort_values(by='motif_time', ascending=False)
+    # pandas_results_print = df_res.groupby(['motif_len']).mean()
+    # print(pandas_results_print)
+    df_res = df_res[df_res['motif_time'] < 50]
+
+    print(len(df_res))
     print(df_res.mean())
-    print(df_res.std())
+    print(df_res.sem())
