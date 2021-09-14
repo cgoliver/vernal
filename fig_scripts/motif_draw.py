@@ -82,8 +82,8 @@ def motifs_supp_fig(mgg,
                     graph_dir="../data/graphs"):
     from tools.motif_hash import motif_hash
 
-    fig, axes = plt.subplots(nrows=n_motifs, ncols=n_instances)
-    fig.set_size_inches(8, 10)
+    fig, axes = plt.subplots(nrows=n_motifs, ncols=n_instances+1)
+    fig.set_size_inches(8.5, 11)
 
     mnodes_sample = [m for m in mgg.maga_graph.nodes() if len(m) <= 5]
     mnodes = np.random.choice(mnodes_sample,
@@ -93,6 +93,7 @@ def motifs_supp_fig(mgg,
     for row, mnode in enumerate(mnodes):
         instance_nodesets = list(mgg.maga_graph.nodes[mnode]['node_set'])[:200]
         motif_topologies = defaultdict(list)
+        mnode_instances = len(mgg.maga_graph.nodes[mnode]['node_set'])
         print("hashing")
         for instance_nodes in instance_nodesets:
             instance_nodes = list(instance_nodes)
@@ -117,9 +118,14 @@ def motifs_supp_fig(mgg,
         # pick most populated topology to draw
         to_draw = sorted(motif_topologies.values(), key=lambda x:len(x),
                          reverse=True)[0]
-        for col in range(n_instances):
+        for col in range(n_instances+1):
             # if row == 1 and col == 2:
                 # break
+            if col == 0:
+                label = f"{'-'.join(map(str, mnode))}, $n={mnode_instances}$"
+                axes[row][col].text(.5, .5, label)
+                axes[row][col].set_axis_off()
+                continue
             try:
                 g, instance_nodes = to_draw.pop()
             except:
@@ -144,7 +150,7 @@ def motifs_supp_fig(mgg,
             ind += 1
 
     plt.tight_layout()
-    plt.savefig(f"../figs/{name}.pdf", format="pdf")
+    plt.savefig(f"../figs/test_{name}.pdf", format="pdf")
     # plt.show()
     return
     pass
@@ -311,7 +317,7 @@ if __name__ == "__main__":
     # print(f"Num novels: ", len(novels))
     # print(f"Num olds: ", len(not_novels))
     print("Loading MAGA")
-    mgg = pickle.load(open('../results/magas/default_name.p', 'rb'))
+    mgg = pickle.load(open('../results/magas/bioinformatics_1.p', 'rb'))
     print("Loaded MAGA")
     for i in range(100):
         print(i)

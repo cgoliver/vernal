@@ -45,6 +45,10 @@ def get_args():
                                    action='store_true',
                                    help="To make the meta graph sparser,\
                                         remove infrequent edges")
+    parser.add_argument('--optimize', default=False,
+                                   action='store_true',
+                                   help="Optimize the number of clusters to\
+                                   use.")
     parser.add_argument("--nc", default=False, action='store_true',
                                 help="To use only nc"),
 
@@ -56,7 +60,7 @@ def get_args():
                                       help="If True, build motifs from\
                                                   input meta-graph.")
     parser.add_argument("--levels", "-l", type=int,
-                                          default=6,
+                                          default=7,
                                           help="Maximum motif size (number of \
                                                 merge operations)")
     parser.add_argument('--backbone', "-bb", default=False,
@@ -87,7 +91,7 @@ def build_mgraph(args):
                     run = args.rgcn,
                     clust_algo=args.clust_algo,
                     n_components=args.n_components,
-                    optimize=False,
+                    optimize=args.optimize,
                     min_edge=args.min_edge,
                     max_var=args.max_var,
                     max_graphs=None,
@@ -95,6 +99,7 @@ def build_mgraph(args):
                     nc_only=args.nc
                     )
     print(f"Built Meta Graph in {time.perf_counter() - start:2f} s")
+    print(f"Meta-graph has {len(mgg.graph.nodes())} nodes.") 
 
     if args.prune:
         print("pruning")
@@ -123,6 +128,7 @@ def retrieve():
 
 def main():
     args,_ = get_args()
+    print(args)
     pass
     if args.meta_graph:
         print(">>> Loading existing meta-graph.")

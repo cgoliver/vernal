@@ -50,7 +50,7 @@ def histogram(maga_path,
     print("Loading maga")
     mgg = pickle.load(open(maga_path, 'rb'))
     print("maga loaded")
-    singletons = [node for node in mgg.maga_graph.nodes() if len(node) == 4]
+    singletons = [node for node in mgg.maga_graph.nodes() if len(node) == 3]
     print(f"got {len(singletons)} singletons")
     mnode_sample_inds = np.random.choice(list(range(len(singletons))),
                                      size=inter_size,
@@ -93,7 +93,7 @@ def histogram(maga_path,
     intra_geds = []
     print(">>> computing intra GED")
     for motif in tqdm(motif_instances_graphs):
-        test = motif[:intra_size]
+        test = motif[:5]
         pairs = itertools.combinations(test, 2)
         pool = mlp.Pool(20)
         geds = list(pool.imap_unordered(do_geds, pairs))
@@ -114,10 +114,14 @@ def histogram(maga_path,
     sns.distplot(inter_geds,
                  label='inter',
                  hist=True,
+                 color='red',
+                 kde=False,
                  kde_kws={'shade': True, 'color': 'red'})
     sns.distplot(intra_geds,
                  label='intra',
+                 color='blue',
                  hist=True,
+                 kde=False,
                  kde_kws={'shade': True, 'color': 'blue'})
 
     sns.despine()
@@ -125,11 +129,11 @@ def histogram(maga_path,
     plt.xlabel('Graph Edit Distance')
 
     plt.legend()
-    # plt.savefig("../figs/intra_inter.pdf", format="pdf")
+    plt.savefig("../figs/intra_inter.pdf", format="pdf")
 
     plt.show()
 
 
 if __name__ == "__main__":
-    histogram("../results/magas/default_name.p", intra_size=4, inter_size=4)
+    histogram("../results/magas/default_name.p", intra_size=20, inter_size=20)
     pass
