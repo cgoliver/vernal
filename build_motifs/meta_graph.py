@@ -74,6 +74,18 @@ class MGraph:
             graphsets[graph_id].append(s)
         return graphsets
 
+    def sanity_check(self):
+        passed = True
+        for node, d in self.graph.nodes(data=True):
+            try:
+                d['node_ids']
+            except KeyError:
+                print(f"Node {node} missing nodeset")
+                passed = False
+                continue
+
+        return passed
+
     def prune(self):
         """
             Remove Mnodes or individual nodes
@@ -393,13 +405,23 @@ class MGraph:
         edge_counts = list()
 
         for node, node_ids in self.graph.nodes(data='node_ids'):
-            # print(node_set)
             node_counts.append(len(node_ids))
 
         for start, end, edge_set in self.graph.edges(data='edge_set'):
             edge_counts.append(len(edge_set))
 
-        return node_counts, edge_counts
+        stats = f"""
+        NODE COUNTS
+        {node_counts}
+
+        EDGE COUNTS
+        {edge_counts}
+
+        CLUSTER SPREADS
+        {self.spread}
+        """
+
+        return stats
 
 
 class MGraphNC(MGraph):
@@ -849,6 +871,7 @@ if __name__ == "__main__":
                     bb_only=args.backbone
                     )
     print(f"Built Meta Graph in {time.perf_counter() - start:2f} s")
+
 
     if args.prune:
         mgg.prune()

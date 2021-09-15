@@ -7,6 +7,7 @@ import os
 import json
 import pickle
 
+from tqdm import tqdm
 import multiset as ms
 import seaborn as sns
 
@@ -25,19 +26,27 @@ def draw_motif(mgg,
                dump_path,
                graph_dir="../data/graphs",
                n_instances=30,
+               overwrite=False
                ):
     try:
         os.mkdir(dump_path)
         os.mkdir(os.path.join(dump_path, "graphs"))
         os.mkdir(os.path.join(dump_path, "metadata"))
-    except:
-        pass
+    except FileExistsError:
+        if not overwrite:
+            return
+        else:
+            pass
 
     clusts = set(list(mnode))
     pal = sns.color_palette("muted", n_colors=len(clusts))
     clust_to_ind = {c:i for i,c in enumerate(clusts)}
 
-    instance_nodesets = list(mgg.maga_graph.nodes[mnode]['node_set'])
+    try:
+        instance_nodesets = list(mgg.maga_graph.nodes[mnode]['node_set'])
+    except KeyError:
+        print(f"{mnode} missing node set")
+        return
     motif_info = {'n_instances': len(instance_nodesets),
                   'mnode': mnode_string(mnode)
                  }
@@ -60,6 +69,7 @@ def draw_motif(mgg,
 
         metadata = {}
         metadata['pdbid'] = instance_nodes[0].split(".")[0]
+        metadata['nodes'] = instance_nodes
 
         with open(os.path.join(dump_path, "metadata", f"{i}.json"), "w") as j:
             json.dump(metadata, j)
@@ -97,7 +107,9 @@ def dump_all(mgg_name, dump_id):
     except:
         pass
 
-    for mnode in mgg.maga_graph.nodes():
+    todo = [m for m in mgg.maga_graph.nodes() if len(m) < 6]
+
+    for mnode in tqdm(todo):
         name = mnode_string(mnode)
         draw_motif(mgg, 
                    mnode, 
@@ -107,5 +119,5 @@ def dump_all(mgg_name, dump_id):
     pass
 
 if __name__ == "__main__":
-    mgg = "default_name"
+    mgg = "bioinformatics_1"
     dump_all(mgg, "bioinformatics_1")

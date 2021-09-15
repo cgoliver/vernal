@@ -20,6 +20,7 @@ def get_stats(mgg):
         try:
             n_instances[len(node)].append(len(data['node_set']))
         except KeyError:
+            print(f">>> MISSING NODESET {node}")
             continue
     n_motifs = {k:len(v) for k,v in n_instances.items()}
     print(n_motifs)
