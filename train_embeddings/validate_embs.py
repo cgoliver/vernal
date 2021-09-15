@@ -126,7 +126,7 @@ def kernel_vs_ged(simfunc,
     ged_matrix = np.array(ged_matrix)[:max_nodes]
     if ged_thresh is not None:
         ged_sel = ged_matrix < ged_thresh
-    ged_flat = np.exp(-1 * ged_matrix)
+    ged_flat = np.exp(- np.array(ged_matrix) / 5)
 
     level = 'graphlet' if simfunc.method in ['graphlet', 'R_graphlets'] else 'edge'
     annots_list = [node[level] for node in node_list]
@@ -142,6 +142,9 @@ def kernel_vs_ged(simfunc,
             ks.append(k)
 
     ks = np.array(ks)
+    ged_flat = ged_flat[:len(ks)]
+    # print('ks : ', ks)
+    # print('ged : ', ged_flat)
 
     if ged_thresh is not None:
         ged_flat = ged_flat[ged_sel]
@@ -153,8 +156,8 @@ def kernel_vs_ged(simfunc,
     return pearsonr(ged_flat, ks)
 
 
-def all_kernels_ged(node_list, ged_matrix, max_nodes=None, ged_thresh=None):
-    all_experiments = build_experiments_list()
+def all_kernels_ged(node_list, ged_matrix, depth=2, max_nodes=None, ged_thresh=None):
+    all_experiments = build_experiments_list(depth=depth)
     all_simfunc = [SimFunctionNode(**simf, hash_init='NR_chops_annot_hash') for simf in all_experiments]
     pool = multiprocessing.Pool()
     default_kernel_vs_ged = partial(kernel_vs_ged, node_list=node_list, ged_matrix=ged_matrix,
@@ -210,24 +213,27 @@ def embs_vs_ged(run,
     K_predict = K_predict.numpy()
 
     # DEBUG : just check the correlation with the kernel
-    # simf = {'depth': 2, 'normalization': 'sqrt', 'method': 'graphlet'}
-    # simfunc = SimFunctionNode(**simf, hash_init='NR_chops_annot_hash')
-    # level = 'graphlet' if simfunc.method in ['graphlet', 'R_graphlets'] else 'edge'
-    # annots_list = [node[level] if level == 'graphlet' else node[level][1:] for node in node_list]
-    # compute_annots = list(itertools.combinations_with_replacement(annots_list, 2))
-    # ks = list()
-    # for i, (ring_1, ring_2) in tqdm(enumerate(compute_annots), total=len(compute_annots)):
-    #     k = simfunc.compare(ring_1, ring_2)
-    #     ks.append(k)
-    # ks = np.array(ks)
-    # pickle.dump(ks, open('temp_ks_graphlets_2','wb'))
-    ks = pickle.load(open('temp_ks_graphlets_2', 'rb'))
+    n_hops = int(run.split('_')[1].split('.')[0])
+    filename = f'temp_ks_graphlets_{n_hops}.p'
+    if not os.path.exists(filename):
+        simf = {'depth': n_hops, 'normalization': 'sqrt', 'method': 'graphlet'}
+        simfunc = SimFunctionNode(**simf, hash_init='NR_chops_annot_hash')
+        level = 'graphlet' if simfunc.method in ['graphlet', 'R_graphlets'] else 'edge'
+        annots_list = [node[level] if level == 'graphlet' else node[level][1:] for node in node_list]
+        compute_annots = list(itertools.combinations_with_replacement(annots_list, 2))
+        ks = list()
+        for i, (ring_1, ring_2) in tqdm(enumerate(compute_annots), total=len(compute_annots)):
+            k = simfunc.compare(ring_1, ring_2)
+            ks.append(k)
+        ks = np.array(ks)
+        pickle.dump(ks, open(filename, 'wb'))
+    ks = pickle.load(open(filename, 'rb'))
 
     # Put it in flat form, and compute the potentially thresholded correlation value
     upper_triangle_indices = np.triu_indices(len(node_embeddings))
     ks_flat = K_predict[upper_triangle_indices]
     ged_matrix = np.array(ged_matrix)
-    ged_flat = np.exp(-1 * ged_matrix)
+    ged_flat = np.exp(- np.array(ged_matrix) / 5)
     if ged_thresh is not None:
         ged_sel = ged_matrix < ged_thresh
         ged_flat = ged_flat[ged_sel]
@@ -249,16 +255,37 @@ if __name__ == "__main__":
     dump_dir = '../results/correlations'
 
     # Get the nodelist
-    n_hops = 1
-    node_list = get_nodelist(depth=n_hops)
-    pickle.dump(node_list, open(f'{dump_dir}/nodelist_{n_hops}hop.p', 'wb'))
+    n_hops = 2
+    # node_list = get_nodelist(depth=n_hops)
+    # pickle.dump(node_list, open(f'{dump_dir}/nodelist_{n_hops}hop.p', 'wb'))
     node_list = pickle.load(open(f'{dump_dir}/nodelist_{n_hops}hop.p', 'rb'))
 
     # Compute GED between graphlets
-    ged_matrix = get_geds(node_list=node_list)
-    pickle.dump(ged_matrix, open(f'{dump_dir}/ged_matrix_{n_hops}hop.p', 'wb'))
+    # ged_matrix = get_geds(node_list=node_list)
+    # pickle.dump(ged_matrix, open(f'{dump_dir}/ged_matrix_{n_hops}hop.p', 'wb'))
     ged_matrix = pickle.load(open(f'{dump_dir}/ged_matrix_{n_hops}hop.p', 'rb'))
-    ged_matrix = np.exp(- np.array(ged_matrix) / np.mean(ged_matrix))
+
+    # plt.hist(ged_matrix)
+    # plt.show()
+    # crop for debugging
+    # max_nodes = 100
+    # simf = {'depth': n_hops, 'normalization': 'None', 'method': 'graphlet'}
+    # simf2 = {'depth': n_hops, 'normalization': 'sqrt', 'method': 'graphlet'}
+    #
+    # simfunc = SimFunctionNode(**simf, hash_init='NR_chops_annot_hash')
+    # corr = kernel_vs_ged(simfunc,
+    #                      node_list,
+    #                      ged_matrix,
+    #                      max_nodes=max_nodes,
+    #                      plot=False)
+    # print(corr)
+    # all_simfunc = [SimFunctionNode(**simfunc, hash_init='NR_chops_annot_hash') for simfunc in (simf, simf2)]
+    # pool = multiprocessing.Pool()
+    # default_kernel_vs_ged = partial(kernel_vs_ged, node_list=node_list, ged_matrix=ged_matrix,
+    #                                 plot=False, print_tqdm=False, max_nodes=max_nodes, ged_thresh=None)
+    # correlation_values = list(tqdm(pool.imap(default_kernel_vs_ged, all_simfunc), total=len(all_simfunc)))
+    # print(correlation_values)
+    # sys.exit()
 
     # Compute kernel values for a list of experiments and correlate them with the GED
     get_kernel_correlations = True
@@ -266,14 +293,15 @@ if __name__ == "__main__":
     if get_kernel_correlations:
         all_experiments = build_experiments_list(depth=n_hops)
         if recompute:
-            correlation_values = all_kernels_ged(node_list=node_list, ged_matrix=ged_matrix)
+            correlation_values = all_kernels_ged(node_list=node_list, ged_matrix=ged_matrix, depth=n_hops)
             pickle.dump(correlation_values, open(f'{dump_dir}/correlation_values_{n_hops}hop.p', 'wb'))
         correlation_values = pickle.load(open(f'{dump_dir}/correlation_values_{n_hops}hop.p', 'rb'))
         correlation_values = np.array([x[0] for x in correlation_values])
 
         # Same thing with a threshold on the GED value
         if recompute:
-            correlation_values_thresh = all_kernels_ged(node_list=node_list, ged_matrix=ged_matrix, ged_thresh=6)
+            correlation_values_thresh = all_kernels_ged(node_list=node_list, ged_matrix=ged_matrix, depth=n_hops,
+                                                        ged_thresh=6)
             pickle.dump(correlation_values_thresh, open(f'{dump_dir}/correlation_values_thresh_{n_hops}hop.p', 'wb'))
         correlation_values_thresh = pickle.load(open(f'{dump_dir}/correlation_values_thresh_{n_hops}hop.p', 'rb'))
         correlation_values_thresh = np.array([x[0] for x in correlation_values_thresh])
@@ -300,7 +328,7 @@ if __name__ == "__main__":
             print(df.to_latex(index=False))
 
     # Compute the correlation, now using the embeddings obtained with our model, and do the same.
-    get_model_correlation = True
+    get_model_correlation = False
     if get_model_correlation:
         correlation, _ = embs_vs_ged(run=f'bioinformatics_{n_hops}',
                                      ged_matrix=ged_matrix,
