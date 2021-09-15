@@ -255,7 +255,7 @@ if __name__ == "__main__":
     dump_dir = '../results/correlations'
 
     # Get the nodelist
-    n_hops = 1
+    n_hops = 2
     # node_list = get_nodelist(depth=n_hops)
     # pickle.dump(node_list, open(f'{dump_dir}/nodelist_{n_hops}hop.p', 'wb'))
     node_list = pickle.load(open(f'{dump_dir}/nodelist_{n_hops}hop.p', 'rb'))
@@ -288,7 +288,7 @@ if __name__ == "__main__":
     # sys.exit()
 
     # Compute kernel values for a list of experiments and correlate them with the GED
-    get_kernel_correlations = False
+    get_kernel_correlations = True
     recompute = False
     if get_kernel_correlations:
         all_experiments = build_experiments_list(depth=n_hops)

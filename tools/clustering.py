@@ -19,7 +19,6 @@ if __name__ == "__main__":
 
 
 def optimize_silhouette(Z,
-                        min_factor=1.05,
                         max_clusts=1000,
                         min_clusts=2,
                         clust_step=10,
@@ -52,9 +51,9 @@ def optimize_silhouette(Z,
             print(f"new best {sil} on {k} components.")
             best_sil = sil
             best_k = k
+            count = 0
         else:
             count += 1
-            break
     df = pd.DataFrame(sils)
     df.to_csv("silhouette.csv")
     return best_k
