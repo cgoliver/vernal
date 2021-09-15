@@ -23,9 +23,6 @@ class V1(Dataset):
     def __init__(self,
                  node_simfunc,
                  annotated_path='../data/annotated/samples',
-                 depth=3,
-                 debug=False,
-                 shuffled=False,
                  ):
 
         self.path = annotated_path
@@ -113,8 +110,6 @@ class Loader():
                  annotated_path='data/annotated/samples/',
                  batch_size=5,
                  num_workers=20,
-                 debug=False,
-                 shuffled=False,
                  node_simfunc=None):
         """
 
@@ -130,8 +125,6 @@ class Loader():
         self.batch_size = batch_size
         self.num_workers = num_workers
         self.dataset = V1(annotated_path=annotated_path,
-                          debug=debug,
-                          shuffled=shuffled,
                           node_simfunc=node_simfunc)
 
         self.node_simfunc = node_simfunc
