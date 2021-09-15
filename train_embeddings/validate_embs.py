@@ -39,7 +39,7 @@ def get_nodelist(graph_dir='../data/annotated/NR_chops_annot', depth=2):
 
     Dump a list containing dicts : {'graph': nx graphlet, 'graphlet': graphlet rings, 'edge': edge rings}
     """
-    graphlist = os.listdir(graph_dir)
+    graphlist = sorted(os.listdir(graph_dir))
     sampled_graphs = np.random.choice(graphlist, replace=False, size=200)
     list_return = list()
     for graph_name in sampled_graphs:
@@ -194,7 +194,7 @@ def embs_vs_ged(run,
 
         # Find the correct index for the main node
         main_node = main_node_list[i]
-        correct_index = list(graph.nodes()).index(main_node)
+        correct_index = list(sorted(graph.nodes())).index(main_node)
         embeddings_list.append(outputs[correct_index])
 
     # Node embeddings : array of shape (n_graphlets, embedding dim)
@@ -213,39 +213,39 @@ def embs_vs_ged(run,
     K_predict = K_predict.numpy()
 
     # DEBUG : just check the correlation with the kernel
-    n_hops = int(run.split('_')[1].split('.')[0])
-    filename = f'temp_ks_graphlets_{n_hops}.p'
-    if not os.path.exists(filename):
-        simf = {'depth': n_hops, 'normalization': 'sqrt', 'method': 'graphlet'}
-        simfunc = SimFunctionNode(**simf, hash_init='NR_chops_annot_hash')
-        level = 'graphlet' if simfunc.method in ['graphlet', 'R_graphlets'] else 'edge'
-        annots_list = [node[level] if level == 'graphlet' else node[level][1:] for node in node_list]
-        compute_annots = list(itertools.combinations_with_replacement(annots_list, 2))
-        ks = list()
-        for i, (ring_1, ring_2) in tqdm(enumerate(compute_annots), total=len(compute_annots)):
-            k = simfunc.compare(ring_1, ring_2)
-            ks.append(k)
-        ks = np.array(ks)
-        pickle.dump(ks, open(filename, 'wb'))
-    ks = pickle.load(open(filename, 'rb'))
+    # n_hops = int(run.split('_')[-1].split('.')[0])
+    # filename = f'temp_ks_graphlets_{n_hops}.p'
+    # if not os.path.exists(filename):
+    #     simf = {'depth': n_hops, 'normalization': 'sqrt', 'method': 'graphlet'}
+    #     simfunc = SimFunctionNode(**simf, hash_init='NR_chops_annot_hash')
+    #     level = 'graphlet' if simfunc.method in ['graphlet', 'R_graphlets'] else 'edge'
+    #     annots_list = [node[level] if level == 'graphlet' else node[level][1:] for node in node_list]
+    #     compute_annots = list(itertools.combinations_with_replacement(annots_list, 2))
+    #     kernel_values = list()
+    #     for i, (ring_1, ring_2) in tqdm(enumerate(compute_annots), total=len(compute_annots)):
+    #         k = simfunc.compare(ring_1, ring_2)
+    #         kernel_values.append(k)
+    #     kernel_values = np.array(kernel_values)
+    #     pickle.dump(kernel_values, open(filename, 'wb'))
+    # kernel_values = pickle.load(open(filename, 'rb'))
 
     # Put it in flat form, and compute the potentially thresholded correlation value
     upper_triangle_indices = np.triu_indices(len(node_embeddings))
-    ks_flat = K_predict[upper_triangle_indices]
+    embeddings_similarities = K_predict[upper_triangle_indices]
     ged_matrix = np.array(ged_matrix)
     ged_flat = np.exp(- np.array(ged_matrix) / 5)
     if ged_thresh is not None:
         ged_sel = ged_matrix < ged_thresh
         ged_flat = ged_flat[ged_sel]
-        ks_flat = ks_flat[ged_sel]
-        ks = ks[ged_sel]
+        embeddings_similarities = embeddings_similarities[ged_sel]
+        # kernel_values = kernel_values[ged_sel]
 
     if plot:
-        sns.regplot(ks_flat, ks, scatter_kws={'s': 1})
-        plt.title(f" pearson: {pearsonr(ged_flat, ks)}")
+        sns.regplot(embeddings_similarities, ged_flat, scatter_kws={'s': 1})
+        plt.title(f" pearson: {pearsonr(ged_flat, embeddings_similarities)}")
         plt.show()
 
-    return pearsonr(ged_flat, ks_flat)
+    return pearsonr(ged_flat, embeddings_similarities)
 
 
 if __name__ == "__main__":
@@ -255,7 +255,7 @@ if __name__ == "__main__":
     dump_dir = '../results/correlations'
 
     # Get the nodelist
-    n_hops = 2
+    n_hops = 1
     # node_list = get_nodelist(depth=n_hops)
     # pickle.dump(node_list, open(f'{dump_dir}/nodelist_{n_hops}hop.p', 'wb'))
     node_list = pickle.load(open(f'{dump_dir}/nodelist_{n_hops}hop.p', 'rb'))
@@ -288,8 +288,8 @@ if __name__ == "__main__":
     # sys.exit()
 
     # Compute kernel values for a list of experiments and correlate them with the GED
-    get_kernel_correlations = True
-    recompute = True
+    get_kernel_correlations = False
+    recompute = False
     if get_kernel_correlations:
         all_experiments = build_experiments_list(depth=n_hops)
         if recompute:
@@ -328,13 +328,13 @@ if __name__ == "__main__":
             print(df.to_latex(index=False))
 
     # Compute the correlation, now using the embeddings obtained with our model, and do the same.
-    get_model_correlation = False
+    get_model_correlation = True
     if get_model_correlation:
-        correlation, _ = embs_vs_ged(run=f'bioinformatics_{n_hops}',
+        correlation, _ = embs_vs_ged(run=f'new_kernel_{n_hops}',
                                      ged_matrix=ged_matrix,
                                      node_list=node_list,
                                      ged_thresh=None)
-        thresh_correlation, _ = embs_vs_ged(run=f'bioinformatics_{n_hops}',
+        thresh_correlation, _ = embs_vs_ged(run=f'new_kernel_{n_hops}',
                                             ged_matrix=ged_matrix,
                                             node_list=node_list,
                                             ged_thresh=6)
