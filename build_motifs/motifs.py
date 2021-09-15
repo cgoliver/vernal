@@ -86,8 +86,14 @@ def maga_next(maga_graph,
 
         for (singleton, motif) in tqdm(todo_edges):
 
+
             # merge phase
             new_node = motif.combine(singleton)
+
+            # this is new
+            if new_node in maga_graph.nodes():
+                continue
+
             new_nodeset = merge_nodesets(maga_graph,
                                          maga_adj,
                                          singleton,
@@ -130,7 +136,10 @@ def maga_next(maga_graph,
             # e.g. for ABC, look at all singletons adjacent to A, B, and C
             for clust in new_node:
                 for nei in mgraph.graph.neighbors(clust):
-                    maga_graph.add_edge(ms.FrozenMultiset([nei]), new_node)
+                    new_edge_u = ms.FrozenMultiset([nei])
+                    maga_graph.add_edge(new_edge_u, new_node)
+                    assert new_edge_u != new_node
+                    assert new_edge_u in maga_graph.nodes()
             pass
 
             # if new motif is similar in size to the old one,
@@ -138,12 +147,46 @@ def maga_next(maga_graph,
             pre_merge_size = len(maga_graph.nodes[motif]['node_set'])
             if len(new_nodeset) >= .8 * pre_merge_size:
                 to_kill.append(motif)
+
+            try:
+                maga_graph.nodes[singleton]['node_set']
+                maga_graph.nodes[motif]['node_set']
+                maga_graph.nodes[new_node]['node_set']
+            except KeyError:
+                print("WHOA ", singleton, motif)
+                break
                 continue
 
-        maga_graph.remove_nodes_from(to_kill)
-
+        # maga_graph.remove_nodes_from(to_kill)
         yield maga_graph
 
+
+def maga_prune(maga_graph, maga_tree):
+    """ Remove redundant mnodes.
+    """
+    starting_nodes = [n for n in maga_tree.nodes() if len(n) == 1]
+    to_kill = []
+
+    def traverse(node):
+        parents = list(maga_tree.neighbors(node))
+        if len(parents) == 0:
+            return
+        for parent in maga_tree.neighbors(node):
+            pre_merge_size = len(maga_graph.nodes[node]['node_set'])
+            post_merge_size = len(maga_graph.nodes[parent]['node_set'])
+            # if len(AB) ~ len(A) kill A
+            if post_merge_size >= .8 * pre_merge_size:
+                to_kill.append(node)
+
+            traverse(parent)
+            pass
+
+    for node in starting_nodes:
+        traverse(node)
+
+    print(f">>> Killed {len(to_kill)} meta-nodes.")
+    maga_graph.remove_nodes_from(to_kill)
+    pass
 
 def maga(mgraph, 
          levels=10, 
@@ -221,6 +264,8 @@ def maga(mgraph,
     boring_clusters = {clust for clust, counts in boring_clusters.items() \
                        if counts['boring'] / counts['samples'] > .8}
 
+    passed = maga_sanity(maga_graph)
+    print(f"Level 0 maga graph: {'OK' if passed else 'FAILED'}")
     print(">>> Doing MAGA.")
     maga_build = maga_next(maga_graph,
                            maga_tree,
@@ -234,8 +279,30 @@ def maga(mgraph,
         print("maga nodes ", len(maga_graph.nodes()),
               "maga edges ", len(maga_graph.edges())
               )
+        passed = maga_sanity(maga_graph)
+        print(f"Level {l} maga graph: {'OK' if passed else 'FAILED'}")
 
-    return maga_graph
+    return maga_graph, maga_tree
+
+def maga_sanity(maga_graph):
+    print(">>> Doing sanity check")
+
+    passed = True
+
+    for node,d in maga_graph.nodes(data=True):
+        try:
+            d['node_set']
+        except KeyError:
+            print(f"Node {node} missing nodeset")
+            passed = False
+    return passed
+    for u, v, d in maga_graph.edges(data=True):
+        try:
+            d['edge_set']
+        except KeyError:
+            print(f"Edge {u}-{v} missing edgeset")
+            passed = False
+    return passed
 
 
 if __name__ == "__main__":

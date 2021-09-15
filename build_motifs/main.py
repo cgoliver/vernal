@@ -71,6 +71,9 @@ def get_args():
                                              default=100,
                                              help="Minimum number of instnaaces\
                                                    to count as motif.")
+    parser.add_argument('--motif-prune', "-mp", default=False,
+                                             action='store_true',
+                                      help="If True, prune motifs.")
     parser.add_argument("--max_var", "-mv", type=float,
                                              default=0.01,
                                              help="Maximum cluster variance.")
@@ -105,20 +108,37 @@ def build_mgraph(args):
         print("pruning")
         mgg.prune()
 
+    passed = mgg.sanity_check()
+    print(f">>> Meta graph sanity check : {'OK' if passed else 'FAILED'}")
+
+    stats = mgg.statistics()
+    print(stats)
+
     print(f"Dumping meta graph in results/mggs/{args.mgg_name}")
     pickle.dump(mgg, open(os.path.join("results", "mggs", args.mgg_name + '.p'),
                           'wb'))
     return mgg
 
+
 def build_motifs(mgraph, args):
     from build_motifs.motifs import maga
-    maga_graph = maga(mgraph, 
-                      levels=args.levels, 
-                      graph_dir=args.graphs,
-                      min_edge=args.min_edge
-                      )
+    from build_motifs.motifs import maga_sanity
+    from build_motifs.motifs import maga_prune
+    maga_graph, maga_tree = maga(mgraph,
+                                 levels=args.levels,
+                                 graph_dir=args.graphs,
+                                 min_edge=args.min_edge
+                                 )
+
     mgraph.maga_graph = maga_graph
+
+    # passed = maga_sanity(maga_graph)
+    # print(f">>> MAGA graph sanity check : {'OK' if passed else 'FAILED'}")
     print(f"Dumping MAGA graph in results/mggs/{args.mgg_name}")
+
+    if args.motif_prune:
+        maga_prune(mgraph.maga_graph, maga_tree)
+
     pickle.dump(mgraph, open(os.path.join("results", "magas", args.mgg_name + '.p'),
                           'wb'))
     pass
