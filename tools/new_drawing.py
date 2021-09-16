@@ -211,7 +211,8 @@ def rna_draw_grid(graphs, subtitles=None, highlight_edges=None, node_colors=None
 
     plt.axis('off')
     if title is not None:
-        plt.xlabel(title)
+        pass
+        # plt.xlabel(title)
     if save:
         plt.tight_layout()
         plt.figsize(('10,10'))

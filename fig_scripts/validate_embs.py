@@ -33,7 +33,7 @@ from tools.rna_ged_nx import ged
 from tools.learning_utils import load_model
 
 
-def get_nodelist(graph_dir='../data/annotated/NR_chops_annot', depth=2):
+def get_nodelist(graph_dir='data/annotated/NR_chops_annot', depth=2):
     """
     Get nodelist at random: sample 200 chopped graphs and then pick a random graph around a NC using rejection sampling
 
@@ -143,8 +143,6 @@ def kernel_vs_ged(simfunc,
 
     ks = np.array(ks)
     ged_flat = ged_flat[:len(ks)]
-    # print('ks : ', ks)
-    # print('ged : ', ged_flat)
 
     if ged_thresh is not None:
         ged_flat = ged_flat[ged_sel]
@@ -252,11 +250,13 @@ if __name__ == "__main__":
     pass
     random.seed(0)
     np.random.seed(0)
-    dump_dir = '../results/correlations'
+    graph_dir = 'data/annotated/NR_chops_annot'
+    dump_dir = 'results/correlations'
+    n_hops = 2
+    model_name = f'new_kernel_{n_hops}'
 
     # Get the nodelist
-    n_hops = 2
-    # node_list = get_nodelist(depth=n_hops)
+    # node_list = get_nodelist(depth=n_hops, graph_dir=graph_dir)
     # pickle.dump(node_list, open(f'{dump_dir}/nodelist_{n_hops}hop.p', 'wb'))
     node_list = pickle.load(open(f'{dump_dir}/nodelist_{n_hops}hop.p', 'rb'))
 
@@ -264,28 +264,6 @@ if __name__ == "__main__":
     # ged_matrix = get_geds(node_list=node_list)
     # pickle.dump(ged_matrix, open(f'{dump_dir}/ged_matrix_{n_hops}hop.p', 'wb'))
     ged_matrix = pickle.load(open(f'{dump_dir}/ged_matrix_{n_hops}hop.p', 'rb'))
-
-    # plt.hist(ged_matrix)
-    # plt.show()
-    # crop for debugging
-    # max_nodes = 100
-    # simf = {'depth': n_hops, 'normalization': 'None', 'method': 'graphlet'}
-    # simf2 = {'depth': n_hops, 'normalization': 'sqrt', 'method': 'graphlet'}
-    #
-    # simfunc = SimFunctionNode(**simf, hash_init='NR_chops_annot_hash')
-    # corr = kernel_vs_ged(simfunc,
-    #                      node_list,
-    #                      ged_matrix,
-    #                      max_nodes=max_nodes,
-    #                      plot=False)
-    # print(corr)
-    # all_simfunc = [SimFunctionNode(**simfunc, hash_init='NR_chops_annot_hash') for simfunc in (simf, simf2)]
-    # pool = multiprocessing.Pool()
-    # default_kernel_vs_ged = partial(kernel_vs_ged, node_list=node_list, ged_matrix=ged_matrix,
-    #                                 plot=False, print_tqdm=False, max_nodes=max_nodes, ged_thresh=None)
-    # correlation_values = list(tqdm(pool.imap(default_kernel_vs_ged, all_simfunc), total=len(all_simfunc)))
-    # print(correlation_values)
-    # sys.exit()
 
     # Compute kernel values for a list of experiments and correlate them with the GED
     get_kernel_correlations = True
@@ -330,11 +308,11 @@ if __name__ == "__main__":
     # Compute the correlation, now using the embeddings obtained with our model, and do the same.
     get_model_correlation = True
     if get_model_correlation:
-        correlation, _ = embs_vs_ged(run=f'new_kernel_{n_hops}',
+        correlation, _ = embs_vs_ged(run=model_name,
                                      ged_matrix=ged_matrix,
                                      node_list=node_list,
                                      ged_thresh=None)
-        thresh_correlation, _ = embs_vs_ged(run=f'new_kernel_{n_hops}',
+        thresh_correlation, _ = embs_vs_ged(run=model_name,
                                             ged_matrix=ged_matrix,
                                             node_list=node_list,
                                             ged_thresh=6)

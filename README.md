@@ -89,6 +89,15 @@ Once the training data is built, we train the RGCN.
 python train_embeddings/main.py train -n my_model -da <data-id>
 ```
 
+To validate both the kernels used and the model trained, we use the correlation with the GED.
+To do so, one should simply run :
+```
+python train_embeddings/validate_embs.py
+```
+Some parameters can be changed at the top of the macro to insert the model name,
+the number of hops used or your path to the data.
+It should print out latex formatted tables with the correlation values.
+
 ## 3. Motif Building
 
 Finally, the trained RGCN and the whole graphs are used to build motifs.
@@ -113,3 +122,10 @@ python build_motifs/main.py -r my_model --mgg_name my_metagraph
 ```
 
 The new meta-graph will be built and dumped in the folder `results/mggs/my_metagraph.p`
+
+## 4. Reproducing the results and figures of the paper
+
+In the order of the figures to reproduce :
+- The correlation to GED validation for the kernel and model are obtained with the script fig_scripts/validate_embeddings
+- Cluster plots are obtained with the script fig_scripts/cluster_plots.py
+- Retrieve hit rates against decoys, GED scores by rank and smooth plots are obtained with the script build_motifs/retrieve.py

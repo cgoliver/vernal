@@ -542,7 +542,7 @@ def match_sizes(graph_to_match, in_graph, whole_in_graph):
     return in_graph
 
 
-def ged_computing(motifs, mg, depth=1, expand_hit=True, timeout=2, draw_pairs=True, draw_grid=False, save_fig=None):
+def ged_computing(motifs, mg, depth=1, expand_hit=True, timeout=2, draw_pairs=False, draw_grid=False, save_fig=None):
     """
     :param expand_hit: To use if we want to compare the actual whole query with the expanded retrieve solutions
     """
@@ -553,8 +553,7 @@ def ged_computing(motifs, mg, depth=1, expand_hit=True, timeout=2, draw_pairs=Tr
         motif_time = time.perf_counter()
         inner_dict = {}
 
-        # if motif_id != ('bgsu', 'HL_50622.1'):
-        if motif_id != ('carnaval', '7'):
+        if motif_id != ('carnaval', '174'):
             continue
 
         # Get all relevant graphs, the border around the instance as well as a potential trimming
@@ -566,10 +565,10 @@ def ged_computing(motifs, mg, depth=1, expand_hit=True, timeout=2, draw_pairs=Tr
         query_instance_graph_expanded = induced_edge_filter(G=query_whole_graph, roots=query_instance)
         plot_depth = actual_depth + 1
 
-        # For pretty plots
+        # For pretty plots, because too many nodes don't plot well
         # print('trimmed : ', trimmed)
         # print('expanding : ', actual_depth)
-        # if len(trimmed) > 4:
+        # if len(trimmed) > 5:
         #     continue
 
         # Gives a hint of how trimming an instance works :
@@ -606,7 +605,7 @@ def ged_computing(motifs, mg, depth=1, expand_hit=True, timeout=2, draw_pairs=Tr
                 all_subtitles = ['Query']
 
         if draw_grid:
-            plot_index = [10, 100, 1000]
+            plot_index = [0, 10, 100]
         else:
             plot_index = [0, 10, 100, 1000]
         for j in plot_index:
@@ -654,8 +653,9 @@ def ged_computing(motifs, mg, depth=1, expand_hit=True, timeout=2, draw_pairs=Tr
                         f'{j}-th hit with Score : {sorted_hits[j][1]:2.2f} \n and GED : {ged_value:.1f}')
 
         if draw_grid:
+            database, motif_number = motif_id
             rna_draw_grid(graphs=all_graphs, node_colors=all_colors, subtitles=all_subtitles,
-                          save=save_fig, grid_shape=(2, 2), title=motif_id)
+                          save=save_fig, grid_shape=(2, 2))
             plt.show()
         # Pick another random that is not the current graph
         other_random = random.randint(0, len(all_motifs) - 2)
@@ -716,7 +716,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     # parser.add_argument('--run', type=str, default="1hopmg")
-    parser.add_argument('-r', '--run', type=str, default="bioinformatics_1_unfiltered")
+    parser.add_argument('-r', '--run', type=str, default="new_kernel_1_unfiltered")
     args, _ = parser.parse_known_args()
 
     # Get pruned data : go through a motif file, and remove sparse ones (few instances),
@@ -746,28 +746,33 @@ if __name__ == '__main__':
     # print(f"this is the result for {args.run}")
     # parse_ab_testing(results_dict)
 
-    # Subsample and get GED values as well as grid drawing.
-    # We also use it to draw the smooth retrieve with draw_grid=True
-    keys = random.sample(pruned_motifs.keys(), 50)
-    subsampled_pruned = {k: pruned_motifs[k] for k in keys}
-    # subsampled_pruned.pop(('carnaval', '79'))
-    # # print(subsampled_pruned)
-    res_dict_ged = ged_computing(motifs=subsampled_pruned, mg=mgg,
-                                 timeout=100, expand_hit=False, draw_pairs=False, draw_grid=True)
-    # print(res_dict_ged)
-    # pickle.dump(res_dict_ged, open('res_dict_ged.p', 'wb'))
+    # Shuffle to get values as well as grid drawing.
+    keys = list(pruned_motifs.keys())
+    random.shuffle(keys)
+    subsampled_shuffled = {k: pruned_motifs[k] for k in keys}
+    res_dict_ged = ged_computing(motifs=subsampled_shuffled, mg=mgg,
+                                 timeout=20, expand_hit=False, draw_grid=True)
+
+    # Get GED values
+    # res_dict_ged = ged_computing(motifs=pruned_motifs, mg=mgg,
+    #                              timeout=100, expand_hit=False, draw_pairs=False, draw_grid=False)
+    # pickle.dump(res_dict_ged, open(f'res_dict_ged_{args.run}.p', 'wb'))
+    # res_dict_ged = pickle.load(open(f'res_dict_ged_{args.run}.p', 'rb'))
 
     # Parse the results with pandas. Filter out the timeouts.
-    import pandas as pd
-
-    pd.set_option('display.max_rows', None)
-    res_dict_ged = pickle.load(open('res_dict_ged.p', 'rb'))
-    df_res = collapse_res_dict(res_dict_ged, pruned_motifs=pruned_motifs)
-    df_res = df_res.sort_values(by='motif_time', ascending=False)
+    # import pandas as pd
+    # pd.set_option('display.max_rows', None)
+    # df_res = collapse_res_dict(res_dict_ged, pruned_motifs=pruned_motifs)
+    # print(df_res.columns)
+    # df_res = df_res.sort_values(by='motif_len', ascending=False)
+    # print(df_res.columns)
+    # df_res = df_res.sort_values(by=0, ascending=False)
+    # df_res = df_res.sort_values(by='motif_time', ascending=False)
+    # df_res = df_res[df_res['motif_time'] < 25]
     # pandas_results_print = df_res.groupby(['motif_len']).mean()
-    # print(pandas_results_print)
-    df_res = df_res[df_res['motif_time'] < 50]
+    # print(df_res)
 
-    print(len(df_res))
-    print(df_res.mean())
-    print(df_res.sem())
+    # # print(pandas_results_print)
+    # print('number of motifs : ', len(df_res))
+    # print(df_res.mean())
+    # print(df_res.sem())

@@ -1,19 +1,15 @@
 """
     Functions for iterative motif building.  """
 
-import sys
 import os
-import time
+import sys
+
 from collections import Counter, defaultdict
 import pickle
 import itertools
-import doctest
-
-import numpy as np
 import networkx as nx
 from scipy.spatial.distance import cdist
-from tqdm import tqdm
-import multiset as ms
+import time
 
 script_dir = os.path.dirname(os.path.realpath(__file__))
 if __name__ == "__main__":
@@ -21,20 +17,8 @@ if __name__ == "__main__":
 
 from tools.graph_utils import whole_graph_from_node, has_NC_bfs, to_undirected
 from tools.learning_utils import inference_on_graph_run
-from tools.learning_utils import inference_on_list
-from tools.graph_utils import bfs_expand, fetch_graph
+from tools.graph_utils import fetch_graph
 from tools.clustering import *
-from tools.rna_ged_nx import ged
-
-from scipy.spatial.distance import pdist
-import matplotlib.pyplot as plt
-
-import seaborn as sns
-from tools.new_drawing import rna_draw
-
-
-def def_set():
-    return defaultdict(set)
 
 
 class MGraph:
@@ -440,7 +424,6 @@ class MGraphNC(MGraph):
                  max_var=0.1,
                  min_edge=50,
                  clust_algo='k_means',
-                 aggregate=-1,
                  optimize=True,
                  max_graphs=None,
                  nc_only=True):
@@ -565,7 +548,7 @@ class MGraphNC(MGraph):
                                                    graph=original_graph,
                                                    verbose=False)
 
-        local_reversed_node_map = {value: key for key, value in motif_node_map.items()}
+        # local_reversed_node_map = {value: key for key, value in motif_node_map.items()}
         # self.Z = Z
 
         nx_motif = original_graph.subgraph(motif)
@@ -835,83 +818,6 @@ def get_embeddings_inference(run,
     return Z[keep_inds], keep_node_ids
 
 
-def get_n_clusts(run, graph_dir):
-    model_output = inference_on_list(run,
-                                     graph_dir,
-                                     graph_list=os.listdir(graph_dir),
-                                     )
-    Z = model_output['Z']
-    best_number = optimize_silhouette(Z,
-                                      max_clusts=500,
-                                      min_clusts=2,
-                                      clust_step=5,
-                                      plateau=4,
-                                      random_state=1
-                                      )
-    print('best number of clusters is : ', best_number)
-    return best_number
-
-
-def plot_silhouette(csv_file):
-    """
-    Take as input the csv file produced by get_nclusts
-    """
-    df = pd.read_csv(csv_file)
-    components = df['components']
-    silhouette = df['silhouette']
-    plt.plot(components, silhouette)
-    plt.xlabel('Number of Components')
-    plt.ylabel('Silhouette Score')
-    plt.savefig('../figs/silhouette_score.pdf')
-    plt.show()
-
-
-def get_clusters_plots(run, graph_dir, n_clusters):
-    recompute = True
-    if recompute:
-        model_output = inference_on_list(run,
-                                         graph_dir,
-                                         graph_list=os.listdir(graph_dir),
-                                         )
-        Z = model_output['Z']
-        model = MiniBatchKMeans(n_clusters=n_clusters)
-        labels = model.fit_predict(Z)
-        centroids = model.cluster_centers_
-        Z = Z[np.random.choice(len(Z), size=10000, replace=False)]
-        pickle.dump((Z, centroids, labels), open('clusters_plotter.p', 'wb'))
-    Z, centroids, labels = pickle.load(open('clusters_plotter.p', 'rb'))
-
-    # Print mean distance
-    pdist_z = pdist(Z)
-    plt.hist(pdist_z, range=(0, 2))
-    plt.xlabel('Pairwise distance between embeddings')
-    plt.ylabel('Counts')
-    plt.savefig('../figs/pdist_embeddings.pdf')
-    plt.show()
-
-    # Print populations
-    counter = Counter(labels)
-    populations = list(reversed(sorted(counter.values())))
-    # populations = [pop if pop < 200 else 200 for pop in populations]
-    # print(populations)
-    plt.plot(range(len(populations)), populations)
-    plt.xlabel('Sorted Cluster ID')
-    plt.ylabel('Cluster Population (thresholded)')
-    plt.yscale('log')
-    plt.savefig('../figs/cluster_populations.pdf')
-    plt.show()
-
-    # Print distance to centroid
-    cdist_z = cdist(Z, centroids)
-    min_dists = np.min(cdist_z, axis=1)
-    plt.hist(min_dists, range=(0, 1.75))
-    plt.xlabel('Distance to Centroid')
-    plt.ylabel('Counts')
-    plt.yscale('log')
-    plt.savefig('../figs/cdist_embeddings.pdf')
-    plt.show()
-
-
 if __name__ == "__main__":
     """
         RNA motifs
@@ -937,26 +843,22 @@ if __name__ == "__main__":
                         help="To use only nc"),
     args, _ = parser.parse_known_args()
 
-    # start = time.perf_counter()
-    # mgg = MGraphAll(run=args.run,
-    #                 clust_algo=args.clust_algo,
-    #                 n_components=args.n_components,
-    #                 optimize=False,
-    #                 min_count=100,
-    #                 max_var=0.1,
-    #                 min_edge=100,
-    #                 max_graphs=None,
-    #                 graph_dir='../data/unchopped_v4_nr',
-    #                 nc_only=args.nc,
-    #                 bb_only=args.backbone
-    #                 )
-    # print(f"Built Meta Graph in {time.perf_counter() - start:2f} s")
-    #
-    # if args.prune:
-    #     mgg.prune()
-    #
-    # pickle.dump(mgg, open(args.name + '.p', 'wb'))
-    n_hops = 1
-    # get_n_clusts(f'new_kernel_{n_hops}', graph_dir='../data/graphs/NR/')
-    # plot_silhouette(f'../results/trained_models/silhouette_{n_hops}hop.csv')
-    # get_clusters_plots(f'new_kernel_{n_hops}', graph_dir='../data/graphs/NR/', n_clusters=200)
+    start = time.perf_counter()
+    mgg = MGraphAll(run=args.run,
+                    clust_algo=args.clust_algo,
+                    n_components=args.n_components,
+                    optimize=False,
+                    min_count=100,
+                    max_var=0.1,
+                    min_edge=100,
+                    max_graphs=None,
+                    graph_dir='../data/unchopped_v4_nr',
+                    nc_only=args.nc,
+                    bb_only=args.backbone
+                    )
+    print(f"Built Meta Graph in {time.perf_counter() - start:2f} s")
+
+    if args.prune:
+        mgg.prune()
+
+    pickle.dump(mgg, open(args.name + '.p', 'wb'))

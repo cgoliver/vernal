@@ -23,8 +23,8 @@ def optimize_silhouette(Z,
                         min_clusts=2,
                         clust_step=10,
                         plateau=2,
-                        random_state=1
-                        ):
+                        random_state=1,
+                        save_name=None):
     """
         Return best number of clusters according to
         silhouette score.
@@ -55,7 +55,8 @@ def optimize_silhouette(Z,
         else:
             count += 1
     df = pd.DataFrame(sils)
-    df.to_csv("silhouette.csv")
+    if save_name is not None:
+        df.to_csv(save_name)
     return best_k
 
 
