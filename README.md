@@ -8,18 +8,23 @@ This is a reference implementation of `veRNAl`, an algorithm for identifying fuz
 Please cite:
 
 ```
-@article{oliver2020vernal,
-  title={VeRNAl: A Tool for Mining Fuzzy Network Motifs in RNA},
-  author={Oliver, Carlos and Mallet, Vincent and Philippopoulos, Pericles and Hamilton, William L and Waldispuhl, Jerome},
-  journal={arXiv preprint arXiv:2009.00664},
-  year={2020}
+@article{vernal,
+    author = {Oliver, Carlos and Mallet, Vincent and Philippopoulos, Pericles and Hamilton, William L and Waldispühl, Jérôme},
+    title = "{VeRNAl: A Tool for Mining Fuzzy Network Motifs in RNA}",
+    journal = {Bioinformatics},
+    year = {2021},
+    month = {11},
+    issn = {1367-4803},
+    doi = {10.1093/bioinformatics/btab768},
+    url = {https://doi.org/10.1093/bioinformatics/btab768},
+    note = {btab768},
+    eprint = {https://academic.oup.com/bioinformatics/advance-article-pdf/doi/10.1093/bioinformatics/btab768/41153095/btab768.pdf},
 }
 ```
 
-See [full paper](https://arxiv.org/abs/2009.00664) for complete description of the algorithm.
+See [full paper](https://academic.oup.com/bioinformatics/article/38/4/970/6428528?login=true) for complete description of the algorithm.
 
 You can browse the results from an already trained model [here](http://vernal.cs.mcgill.ca/).
-
 
 This repository has three main components:
 
