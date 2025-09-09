@@ -22,6 +22,8 @@ Please cite:
 }
 ```
 
+Motif data is available on Zenodo: https://zenodo.org/records/17087809
+
 See [full paper](https://academic.oup.com/bioinformatics/article/38/4/970/6428528?login=true) for complete description of the algorithm.
 
 You can browse the results from an already trained model [here](http://vernal.cs.mcgill.ca/).
