@@ -22,7 +22,7 @@ Please cite:
 }
 ```
 
-Motif data is available on Zenodo: https://zenodo.org/records/17087809
+**Motif data as a CSV is available on Zenodo: https://zenodo.org/records/17087809**
 
 See [full paper](https://academic.oup.com/bioinformatics/article/38/4/970/6428528?login=true) for complete description of the algorithm.
 
