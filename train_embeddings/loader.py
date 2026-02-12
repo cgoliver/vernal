@@ -15,7 +15,7 @@ if __name__ == "__main__":
 
 from torch.utils.data import Dataset, DataLoader, Subset
 from tools.node_sim import k_block_list, simfunc_from_hparams, EDGE_MAP
-from tools.graph_utils import fetch_graph
+from tools.graph_utils import fetch_graph, read_nx_graph
 
 
 class V1(Dataset):
@@ -58,14 +58,15 @@ class V1(Dataset):
             data = pickle.load(open(g_path, 'rb'))
             graph = data['graph']
         else:
-            graph = nx.read_gpickle(g_path)
+            graph = read_nx_graph(g_path)
         graph = nx.to_undirected(graph)
         one_hot = {edge: torch.tensor(self.edge_map[label]) for edge, label in
                    (nx.get_edge_attributes(graph, 'label')).items()}
         nx.set_edge_attributes(graph, name='one_hot', values=one_hot)
 
-        g_dgl = dgl.DGLGraph()
-        g_dgl.from_networkx(nx_graph=graph, edge_attrs=['one_hot'])
+        # DGL from_networkx requires directed graph for edge_attrs
+        graph_directed = graph.to_directed()
+        g_dgl = dgl.from_networkx(graph_directed, edge_attrs=['one_hot'])
 
         if self.node_simfunc is not None:
             ring = data['rings'][self.level]
@@ -86,7 +87,7 @@ def collate_wrapper(node_simfunc):
             batched_graph = dgl.batch(graphs)
             K = k_block_list(rings, node_simfunc)
             idx = np.array(idx)
-            len_graphs = [len(graph) for graph in graphs]
+            len_graphs = [g.num_nodes() for g in graphs]
             return batched_graph, torch.from_numpy(K).detach().float(), torch.from_numpy(idx), len_graphs
     else:
         def collate_block(samples):
@@ -95,7 +96,7 @@ def collate_wrapper(node_simfunc):
             graphs, _, idx = map(list, zip(*samples))
             batched_graph = dgl.batch(graphs)
             idx = np.array(idx)
-            len_graphs = [len(graph) for graph in graphs]
+            len_graphs = [g.num_nodes() for g in graphs]
             return batched_graph, [1 for _ in samples], torch.from_numpy(idx), len_graphs
     return collate_block
 

@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.p
+.Python
+data/
+results/
+motifs.json
+*.egg-info/
+dist/
+build/

@@ -17,9 +17,12 @@ if __name__ == "__main__":
 
 from tools.rna_layout import circular_layout
 
-params = {'text.latex.preamble': [r'\usepackage{fdsymbol}\usepackage{xspace}']}
+params = {'text.latex.preamble': r'\usepackage{fdsymbol}\usepackage{xspace}'}
 plt.rc('font', family='serif')
-plt.rcParams.update(params)
+try:
+    plt.rcParams.update(params)
+except (ValueError, KeyError):
+    matplotlib.rcParams['text.usetex'] = False
 
 labels = {
     'CW': r"$\medblackcircle$\xspace",

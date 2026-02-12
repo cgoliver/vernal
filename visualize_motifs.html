@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeRNAl - Motif Browser</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container { display: flex; height: 100vh; }
+
+        .sidebar {
+            width: 320px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            background: #fafafa;
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .motif-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .motif-item {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .motif-item:hover {
+            background: #f0f0f0;
+            border-color: #4a90e2;
+        }
+
+        .motif-item.active {
+            background: #e3f2fd;
+            border-color: #2196f3;
+        }
+
+        .motif-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .motif-id {
+            font-weight: 600;
+            color: #2196f3;
+            font-size: 15px;
+        }
+
+        .motif-stats {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .motif-stats span { margin-right: 12px; }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .viewer-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            background: #fafafa;
+        }
+
+        .viewer-header h2 {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .viewer-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .viewer-controls select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            min-width: 200px;
+        }
+
+        .info-panel {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .info-panel strong { color: #333; }
+
+        .graph-container {
+            flex: 1;
+            position: relative;
+            border: 1px solid #e0e0e0;
+            margin: 20px;
+            border-radius: 4px;
+            background: #fff;
+            min-height: 400px;
+        }
+
+        #graph-network {
+            width: 100%;
+            height: 100%;
+        }
+
+        svg { width: 100%; height: 100%; display: block; }
+
+        .node { cursor: pointer; }
+
+        .node circle {
+            fill: #4a90e2;
+            stroke: #2c5aa0;
+            stroke-width: 2px;
+        }
+
+        .node:hover circle {
+            fill: #2196f3;
+            stroke: #1976d2;
+        }
+
+        .node text {
+            font-size: 11px;
+            fill: #333;
+            pointer-events: none;
+            text-anchor: middle;
+            dominant-baseline: central;
+        }
+
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+            stroke-width: 2px;
+        }
+
+        .link:hover {
+            stroke: #333;
+            stroke-opacity: 1;
+        }
+
+        .link-label {
+            font-size: 10px;
+            fill: #666;
+            pointer-events: none;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #999;
+        }
+
+        .empty-state p { margin: 8px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>VeRNAl Motif Browser</h1>
+                <p>Load a motifs JSON file exported from a meta-graph</p>
+                <div class="file-input-wrapper">
+                    <input type="file" id="motifFileInput" accept=".json" />
+                </div>
+            </div>
+            <div class="motif-list" id="motifList">
+                <div class="empty-state">
+                    <p>Load a motifs JSON file to begin</p>
+                    <p style="font-size: 11px;">Run: python tools/export_metagraph.py results/mggs/my_metagraph.p -o motifs.json</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="viewer-header">
+                <h2 id="viewerTitle">No motif selected</h2>
+                <div class="viewer-controls">
+                    <select id="instanceSelect" style="display: none;">
+                        <option value="">Select instance...</option>
+                    </select>
+                    <div class="info-panel" id="instanceInfo" style="display: none;">
+                        <strong>Instance:</strong> <span id="instanceNum">-</span> / <span id="totalInstances">-</span>
+                        <span style="margin-left: 15px;"><strong>Graph:</strong> <span id="graphId">-</span></span>
+                        <span style="margin-left: 15px;"><strong>Nodes:</strong> <span id="nodeCount">-</span></span>
+                        <span style="margin-left: 15px;"><strong>Edges:</strong> <span id="edgeCount">-</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="graph-container">
+                <div id="graph-network"></div>
+                <div class="empty-state" id="emptyState">
+                    <p>Select a motif to visualize</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let motifsData = null;
+        let currentSimulation = null;
+        let currentSvg = null;
+        let currentMotif = null;
+
+        document.getElementById('motifFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    motifsData = JSON.parse(e.target.result);
+                    loadMotifs(motifsData);
+                } catch (err) {
+                    console.error(err);
+                    alert('Error parsing JSON: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function loadMotifs(data) {
+            const motifList = document.getElementById('motifList');
+            motifList.innerHTML = '';
+
+            if (!data || !data.motifs || data.motifs.length === 0) {
+                motifList.innerHTML = '<div class="empty-state"><p>No motifs found</p></div>';
+                return;
+            }
+
+            data.motifs.forEach((motif, idx) => {
+                const item = document.createElement('div');
+                item.className = 'motif-item';
+                item.onclick = () => selectMotif(idx, motif, item);
+
+                item.innerHTML = `
+                    <div class="motif-header">
+                        <span class="motif-id">Motif ${idx}</span>
+                    </div>
+                    <div class="motif-stats">
+                        <span>Cluster ${motif.cluster_id}</span>
+                        <span>Nodes: ${motif.num_nodes}</span>
+                        <span>Edges: ${motif.num_edges}</span>
+                        <span>Instances: ${motif.num_instances}</span>
+                    </div>
+                `;
+                motifList.appendChild(item);
+            });
+        }
+
+        function selectMotif(idx, motif, element) {
+            document.querySelectorAll('.motif-item').forEach(item => item.classList.remove('active'));
+            if (element) element.classList.add('active');
+
+            currentMotif = motif;
+            document.getElementById('viewerTitle').textContent = `Motif ${idx} (Cluster ${motif.cluster_id})`;
+
+            const instanceSelect = document.getElementById('instanceSelect');
+            const instanceInfo = document.getElementById('instanceInfo');
+
+            if (motif.graphs && motif.graphs.length > 0) {
+                instanceSelect.style.display = 'block';
+                instanceInfo.style.display = 'block';
+                instanceSelect.innerHTML = '<option value="">Select instance...</option>';
+
+                motif.graphs.forEach((g, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = `Instance ${i + 1} (${g.graph_id})`;
+                    instanceSelect.appendChild(opt);
+                });
+
+                document.getElementById('totalInstances').textContent = motif.graphs.length;
+                instanceSelect.value = '0';
+                displayGraph(motif.graphs[0]);
+            } else {
+                instanceSelect.style.display = 'none';
+                instanceInfo.style.display = 'none';
+                clearGraph();
+            }
+
+            instanceSelect.onchange = function() {
+                const i = parseInt(this.value);
+                if (!isNaN(i) && motif.graphs[i]) {
+                    displayGraph(motif.graphs[i]);
+                }
+            };
+        }
+
+        function displayGraph(graphData) {
+            document.getElementById('emptyState').style.display = 'none';
+
+            document.getElementById('instanceNum').textContent = 
+                (parseInt(document.getElementById('instanceSelect').value) || 0) + 1;
+            document.getElementById('graphId').textContent = graphData.graph_id || '-';
+            document.getElementById('nodeCount').textContent = graphData.nodes ? graphData.nodes.length : 0;
+            document.getElementById('edgeCount').textContent = graphData.links ? graphData.links.length : 0;
+
+            clearGraph();
+
+            const container = document.getElementById('graph-network');
+            const rect = container.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+
+            const nodes = (graphData.nodes || []).map((n, i) => ({
+                id: n.id !== undefined ? n.id : String(i),
+                label: n.label || String(n.id || i)
+            }));
+
+            const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+            const links = (graphData.links || []).map(link => {
+                const src = typeof link.source === 'object' ? link.source.id : link.source;
+                const tgt = typeof link.target === 'object' ? link.target.id : link.target;
+                const s = nodeMap.get(src);
+                const t = nodeMap.get(tgt);
+                if (!s || !t) return null;
+                return {
+                    source: s,
+                    target: t,
+                    label: link.label || ''
+                };
+            }).filter(Boolean);
+
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            currentSvg = svg;
+
+            const zoom = d3.zoom()
+                .scaleExtent([0.1, 4])
+                .on('zoom', (event) => g.attr('transform', event.transform));
+
+            svg.call(zoom);
+
+            const g = svg.append('g');
+
+            const simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(80))
+                .force('charge', d3.forceManyBody().strength(-300))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(25));
+
+            currentSimulation = simulation;
+
+            const link = g.append('g').attr('class', 'links')
+                .selectAll('line')
+                .data(links)
+                .enter().append('line')
+                .attr('class', 'link')
+                .attr('stroke-width', 2)
+                .attr('stroke-opacity', 0.6);
+
+            const linkLabels = g.append('g').attr('class', 'link-labels')
+                .selectAll('text')
+                .data(links.filter(l => l.label))
+                .enter().append('text')
+                .attr('class', 'link-label')
+                .text(d => d.label);
+
+            const node = g.append('g').attr('class', 'nodes')
+                .selectAll('g')
+                .data(nodes)
+                .enter().append('g')
+                .attr('class', 'node')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            node.append('circle').attr('r', 18)
+                .attr('fill', '#4a90e2')
+                .attr('stroke', '#2c5aa0')
+                .attr('stroke-width', 2);
+
+            node.append('text')
+                .text(d => d.label)
+                .attr('dy', 0)
+                .attr('font-size', '11px')
+                .attr('fill', '#333');
+
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                linkLabels
+                    .attr('x', d => (d.source.x + d.target.x) / 2)
+                    .attr('y', d => (d.source.y + d.target.y) / 2);
+
+                node.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+        }
+
+        function clearGraph() {
+            if (currentSimulation) {
+                currentSimulation.stop();
+                currentSimulation = null;
+            }
+            if (currentSvg) {
+                currentSvg.remove();
+                currentSvg = null;
+            }
+            d3.select('#graph-network').selectAll('*').remove();
+            document.getElementById('emptyState').style.display = 'flex';
+        }
+    </script>
+</body>
+</html>

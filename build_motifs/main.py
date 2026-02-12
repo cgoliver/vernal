@@ -108,9 +108,9 @@ def build_mgraph(args):
 def build_motifs(mgraph, args):
     from build_motifs.motifs import maga
     maga_graph = maga(mgraph, levels=args.levels)
-    pass
+    return maga_graph
 
-def retrieve():
+def retrieve(args):
     pass
 
 def main():
@@ -122,12 +122,33 @@ def main():
                              os.path.join("results", "mggs", args.meta_graph + ".p"),
                              "rb"
                             ))
+        mgg_name = args.meta_graph
     else:
         print(">>> Building new meta graph.")
         mgraph = build_mgraph(args)
+        mgg_name = args.mgg_name
 
+    maga_graph = None
     if args.do_build:
-        build_motifs(mgraph, args)
+        maga_graph = build_motifs(mgraph, args)
+        # Save MAGA graph for export
+        maga_path = os.path.join("results", "mggs", mgg_name + "_maga.p")
+        pickle.dump(maga_graph, open(maga_path, 'wb'))
+        print(f">>> Saved MAGA graph to {maga_path}")
+
+    # Auto-export to JSON for the motif viewer
+    try:
+        from tools.export_metagraph import export_metagraph
+        json_path = os.path.join("results", "mggs", mgg_name + ".json")
+        export_metagraph(
+            os.path.join("results", "mggs", mgg_name + ".p"),
+            json_path,
+            max_instances=20,
+            maga_graph=maga_graph,
+        )
+        print(f">>> Exported motifs to {json_path} (open visualize_motifs.html to view)")
+    except Exception as e:
+        print(f">>> Could not export JSON for viewer: {e}")
 
     if args.do_retrieve:
         retrieve(args)

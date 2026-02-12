@@ -63,7 +63,7 @@ if function == 'train':
                         default=0.002)
     parser.add_argument("-sim", "--similarity", default=True,
                         help="If we want to train reconstruction on distance instead of cosine",
-                        action='store_false'),
+                        action='store_false')
     parser.add_argument("-sl", "--self_loop", default=False,
                         help="Add a self loop to graphs for convolution. Default: False",
                         action='store_true'),
@@ -114,7 +114,7 @@ if function == 'train':
     hparams.add_value('argparse', 'num_edge_types', loader.num_edge_types)
     train_loader, test_loader, all_loader = loader.get_data()
 
-    if len(train_loader) == 0 & len(test_loader) == 0:
+    if len(train_loader) == 0 and len(test_loader) == 0:
         raise ValueError('there are not enough points compared to the BS')
 
     # Model and optimizer setup

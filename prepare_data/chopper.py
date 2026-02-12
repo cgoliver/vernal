@@ -17,7 +17,7 @@ from sklearn.decomposition import PCA
 import networkx as nx
 from Bio.PDB import *
 
-from tools.graph_utils import dangle_trim,gap_fill
+from tools.graph_utils import dangle_trim, gap_fill, read_nx_graph, write_nx_graph
 
 MM_of_Elements = {'H': 1.00794, 'He': 4.002602, 'Li': 6.941, 'Be': 9.012182, 'B': 10.811, 'C': 12.0107, 'N': 14.0067,
                   'O': 15.9994, 'F': 18.9984032, 'Ne': 20.1797, 'Na': 22.98976928, 'Mg': 24.305, 'Al': 26.9815386,
@@ -205,7 +205,7 @@ def compute_one_rna(args):
                 return 0
 
         structure = parser.get_structure('', osp.join(pdb_path, pdbid.lower() + ".cif"))[0]
-        graph = nx.read_gpickle(osp.join(graph_path, pdbid.lower() + ".nx"))
+        graph = read_nx_graph(osp.join(graph_path, pdbid.lower() + ".nx"))
         residues = [r for r in structure.get_residues() if r.id[0] == ' ' and
                     r.get_resname() in RNA]
         chops = chop(residues)
@@ -213,7 +213,7 @@ def compute_one_rna(args):
             subgraph = blob_to_graph(c, graph, rna)
             subgraph = graph_clean(graph, subgraph)
             if graph_filter(subgraph):
-                nx.write_gpickle(subgraph, osp.join(dest, f"{pdbid}_{j}.nx"))
+                write_nx_graph(subgraph, osp.join(dest, f"{pdbid}_{j}.nx"))
             else:
                 pass
                 # print(f"Graph {pdbid}_{j} failed graph filter. Had {len(subgraph.nodes())} nodes. " +
@@ -232,7 +232,7 @@ def all_rna_process(graph_path='../data/carnaval',
         Chop all the RNAs in the dataset.
     """
 
-    graphs = os.listdir(graph_path)
+    graphs = [f for f in os.listdir(graph_path) if f.endswith('.nx')]
     failed = 0
     pool = mlt.Pool()
     if parallel:

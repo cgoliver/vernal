@@ -16,7 +16,7 @@ import numpy as np
 
 if __name__ == "__main__":
     sys.path.append("..")
-from tools.graph_utils import nx_to_dgl
+from tools.graph_utils import nx_to_dgl, read_nx_graph
 
 
 class OrderedCounter(Counter, OrderedDict):
@@ -107,7 +107,7 @@ def get_hard_embeddings(graph_dir, e_types=None, max_graphs=-1, **kwargs):
     print(f">>> computing embeddings for {len(graphlist)} graphs")
     for i, g in tqdm(enumerate(graphlist), total=len(graphlist)):
         try:
-            G, trees, rings = nx.read_gpickle(os.path.join(graph_dir, g))
+            G, trees, rings = read_nx_graph(os.path.join(graph_dir, g))
         except:
             print(f"failed to load graph {g}")
             continue

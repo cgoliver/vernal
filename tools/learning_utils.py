@@ -138,7 +138,7 @@ def load_model(run, permissive=False, verbose=True):
     return model
 
 
-default_edge_map = {'B53': 0, 'CHH': 1, 'CHS': 2, 'CHW': 3, 'CSH': 2, 'CSS': 4, 'CSW': 5, 'CWH': 3, 'CWS': 5, 'CWW': 6,
+default_edge_map = {'B53': 0, 'B35': 0, 'CHH': 1, 'CHS': 2, 'CHW': 3, 'CSH': 2, 'CSS': 4, 'CSW': 5, 'CWH': 3, 'CWS': 5, 'CWW': 6,
                     'THH': 7, 'THS': 8, 'THW': 9, 'TSH': 8, 'TSS': 10, 'TSW': 11, 'TWH': 9, 'TWS': 11, 'TWW': 12}
 
 
@@ -155,8 +155,8 @@ def inference_on_graph(model,
                (nx.get_edge_attributes(graph, 'label')).items()}
     nx.set_edge_attributes(graph, name='one_hot', values=one_hot)
 
-    g_dgl = dgl.DGLGraph()
-    g_dgl.from_networkx(nx_graph=graph, edge_attrs=['one_hot'])
+    graph_directed = graph.to_directed()
+    g_dgl = dgl.from_networkx(graph_directed, edge_attrs=['one_hot'])
     g_dgl = send_graph_to_device(g_dgl, device)
     model = model.to(device)
     with torch.no_grad():
