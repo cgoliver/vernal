@@ -27,6 +27,11 @@ def get_pdbid(node_name):
     return str(node_name).split('.')[0].lower()[:4]
 
 
+def _to_int(x):
+    """Convert numpy scalar or int to Python int."""
+    return int(x.item()) if hasattr(x, 'item') else int(x)
+
+
 def nodeset_to_instance(mgraph, nodeset, graph_dir, reversed_node_map):
     """
     Convert a nodeset (frozenset of node indices) from MAGA to a viewer instance.
@@ -53,7 +58,16 @@ def nodeset_to_instance(mgraph, nodeset, graph_dir, reversed_node_map):
         if sub.number_of_edges() == 0:
             return None
 
-        nodes = [{'id': n, 'label': n.split('.')[-1] if '.' in n else str(n)} for n in sub.nodes()]
+        name_to_idx = {reversed_node_map[idx]: idx for idx in nodeset}
+        nodes = []
+        for n in sub.nodes():
+            idx = name_to_idx.get(n)
+            cluster_id = _to_int(mgraph.labels[idx]) if idx is not None else None
+            nodes.append({
+                'id': n,
+                'label': n.split('.')[-1] if '.' in n else str(n),
+                'cluster_id': cluster_id,
+            })
         links = [{'source': u, 'target': v, 'label': d.get('label', '')} for u, v, d in sub.edges(data=True)]
         return {
             'graph_id': pdbid,
@@ -85,12 +99,16 @@ def export_from_maga(mgraph, maga_graph, graph_dir, max_instances=20):
         if not instances:
             continue
 
-        # maga_node is FrozenMultiset of cluster IDs - use sorted tuple for display
-        cluster_ids = tuple(int(x) for x in sorted(maga_node))
+        # maga_node is FrozenMultiset of cluster IDs (may be numpy scalars) - convert for clean display
+        def _to_int(x):
+            return int(x.item()) if hasattr(x, 'item') else int(x)
+
+        cluster_ids = tuple(_to_int(x) for x in sorted(maga_node))
+        cluster_display = str(cluster_ids) if len(cluster_ids) > 1 else str(cluster_ids[0])
 
         motifs.append({
             'id': len(motifs),
-            'cluster_id': str(cluster_ids) if len(cluster_ids) > 1 else cluster_ids[0],  # e.g. "(0, 1, 2)" or 0
+            'cluster_id': cluster_display,
             'sigma': 0.0,
             'count': sum(len(ns) for ns in node_set),
             'num_instances': len(instances),
