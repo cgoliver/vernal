@@ -123,13 +123,18 @@ To build a new meta-graph and motifs (using data from steps 1-2):
 
 ```
 mkdir -p results/mggs
-python build_motifs/main.py -r my_model -g data/graphs/rnaglib_nr_whole --mgg_name my_metagraph -b
+python build_motifs/main.py -r my_model --mgg_name my_metagraph -b
 ```
 
 - `-r my_model`: trained model from step 2
-- `-g data/graphs/rnaglib_nr_whole`: path to whole graphs (from step 1)
 - `--mgg_name my_metagraph`: output meta-graph name
 - `-b`: build motifs from the meta-graph
+
+By default, graphs are loaded from rnaglib's RNADataset (no prepare_data conversion needed). To use local `.nx` files instead, pass `-g`:
+
+```
+python build_motifs/main.py -r my_model -g data/graphs/rnaglib_nr_whole --mgg_name my_metagraph -b
+```
 
 The meta-graph and motifs will be built and dumped in `results/mggs/my_metagraph.p`.
 
@@ -141,4 +146,19 @@ To export manually (e.g. with different options):
 
 ```bash
 python tools/export_metagraph.py results/mggs/my_metagraph.p -o motifs.json --max-instances 10
+```
+
+### Aquinas server setup
+
+```bash
+# 1. Clone and setup
+git clone <repo> vernal && cd vernal
+bash scripts/setup_aquinas.sh
+
+# 2. Prepare data (interactive or SLURM)
+python prepare_data/main.py -n rnaglib_full --source rnaglib
+# Or: sbatch scripts/aquinas_prepare_slurm.sh
+
+# 3. Train and build (SLURM)
+sbatch scripts/aquinas_slurm.sh
 ```

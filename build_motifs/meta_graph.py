@@ -23,6 +23,7 @@ from tools.graph_utils import graph_from_node, whole_graph_from_node, has_NC_bfs
 from tools.learning_utils import inference_on_graph_run
 from tools.learning_utils import inference_on_list
 from tools.graph_utils import bfs_expand, graph_from_node, fetch_graph
+from tools.graph_provider import GraphProvider, DirectoryGraphProvider, RNADatasetGraphProvider
 from tools.clustering import *
 from tools.rna_ged_nx import ged
 
@@ -118,7 +119,11 @@ class MGraph:
         :param motif:
         :return: {frozenset of node ids : score}
         """
-        original_graph = whole_graph_from_node(motif[0])
+        graph_provider = getattr(self, 'graph_provider', None)
+        annot_dir = os.path.abspath(self.graph_dir) if self.graph_dir else None
+        original_graph = whole_graph_from_node(
+            motif[0], annot_dir=annot_dir, graph_provider=graph_provider
+        )
         # sort the query edges based on meta edge identity to get speedup
         query_nodes, query_edges = self.build_query_graph(original_graph, motif)
         query_edges = sorted(list(query_edges), key=lambda x: (x[2], x[3]))
@@ -254,7 +259,11 @@ class MGraph:
         :param motif:
         :return: {frozenset of node ids : score}
         """
-        original_graph = whole_graph_from_node(motif[0])
+        graph_provider = getattr(self, 'graph_provider', None)
+        annot_dir = os.path.abspath(self.graph_dir) if self.graph_dir else None
+        original_graph = whole_graph_from_node(
+            motif[0], annot_dir=annot_dir, graph_provider=graph_provider
+        )
         query_nodes, query_edges = self.build_query_graph(original_graph, motif)
 
         # Sort the query edges based on meta edge identity to get speedup
@@ -568,6 +577,7 @@ class MGraphAll(MGraph):
     def __init__(self,
                  run,
                  graph_dir='../data/annotated/whole_v4',
+                 graph_provider=None,
                  n_components=8,
                  min_count=50,
                  max_var=0.1,
@@ -577,10 +587,18 @@ class MGraphAll(MGraph):
                  max_graphs=None,
                  nc_only=False,
                  bb_only=False):
-
+        """
+        :param graph_dir: Path to .nx graph directory (used when graph_provider is None)
+        :param graph_provider: GraphProvider instance (e.g. RNADatasetGraphProvider) - overrides graph_dir when set
+        """
         # General
         self.run = run
-        self.graph_dir = graph_dir
+        if graph_provider is not None:
+            self.graph_provider = graph_provider
+            self.graph_dir = getattr(graph_provider, 'graph_dir', None)
+        else:
+            self.graph_provider = DirectoryGraphProvider(graph_dir)
+            self.graph_dir = graph_dir
 
         # Nodes parameters
         self.n_components = n_components
@@ -593,9 +611,12 @@ class MGraphAll(MGraph):
         self.min_edge = min_edge
 
         # BUILD MNODES
+        graph_list = self.graph_provider.list_names()
+        if max_graphs is not None:
+            graph_list = graph_list[:max_graphs]
         model_output = inference_on_list(self.run,
-                                         self.graph_dir,
-                                         os.listdir(self.graph_dir),
+                                         graph_provider=self.graph_provider,
+                                         graph_list=graph_list,
                                          max_graphs=max_graphs,
                                          nc_only=nc_only
                                          )
@@ -657,9 +678,11 @@ class MGraphAll(MGraph):
             self.graph.nodes[clust]['node_ids'].add(index)
 
         # BUILD MEDGES
-        for graph_name in os.listdir(self.graph_dir)[:max_graphs]:
-            graph_path = os.path.join(self.graph_dir, graph_name)
-            g = fetch_graph(graph_path)
+        edge_graph_list = self.graph_provider.list_names()
+        if max_graphs is not None:
+            edge_graph_list = edge_graph_list[:max_graphs]
+        for graph_name in edge_graph_list:
+            g = self.graph_provider.get_graph_by_name(graph_name)
             g = g.to_undirected()
             for start_node, end_node in g.edges():
                 # Get edges id

@@ -41,13 +41,24 @@ def graph_from_node(node_id,
     return pickle.load(open(graph_path, 'rb'))['graph'].to_undirected()
 
 
-def whole_graph_from_node(node_id, annot_dir=os.path.join(script_dir, graph_dir)):
+def whole_graph_from_node(node_id, annot_dir=os.path.join(script_dir, graph_dir), graph_provider=None):
     """
-        Fetch whole graph from a node id.
-        node_id can be:
+    Fetch whole graph from a node id.
+
+    :param node_id: Can be:
         - (graph_file, node): tuple from chunked format
         - node_name: string like "1d0t.A.1" (pdbid.chain.pos) from whole-graph format
+    :param annot_dir: Path to .nx graph directory (used when graph_provider is None)
+    :param graph_provider: GraphProvider instance - overrides annot_dir when set
     """
+    if graph_provider is not None:
+        if isinstance(node_id, (list, tuple)):
+            graph_file = node_id[0]
+            name = graph_file.split('_')[0] if '_' in str(graph_file) else graph_file
+        else:
+            name = str(node_id).split('.')[0].lower()[:4]
+        return graph_provider.get_graph_by_name(name)
+
     if isinstance(node_id, (list, tuple)):
         graph_file = node_id[0]
         if '_' in str(graph_file):
@@ -55,7 +66,6 @@ def whole_graph_from_node(node_id, annot_dir=os.path.join(script_dir, graph_dir)
         else:
             graph_path = os.path.join(annot_dir, graph_file)
     else:
-        # node_id is node name string (e.g. "1d0t.A.1") -> extract pdbid
         pdbid = str(node_id).split('.')[0].lower()[:4]
         graph_path = os.path.join(annot_dir, pdbid + '.nx')
     return read_nx_graph(graph_path)

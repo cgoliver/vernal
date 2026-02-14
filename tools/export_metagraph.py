@@ -32,7 +32,7 @@ def _to_int(x):
     return int(x.item()) if hasattr(x, 'item') else int(x)
 
 
-def nodeset_to_instance(mgraph, nodeset, graph_dir, reversed_node_map):
+def nodeset_to_instance(mgraph, nodeset, graph_dir, reversed_node_map, graph_provider=None):
     """
     Convert a nodeset (frozenset of node indices) from MAGA to a viewer instance.
     Each nodeset is guaranteed to be connected by the MAGA construction.
@@ -49,11 +49,13 @@ def nodeset_to_instance(mgraph, nodeset, graph_dir, reversed_node_map):
 
     pdbid = get_pdbid(node_names[0])
     annot_dir = os.path.abspath(graph_dir) if graph_dir else None
-    if not annot_dir:
+    if not annot_dir and graph_provider is None:
         return None
 
     try:
-        G = whole_graph_from_node(node_names[0], annot_dir=annot_dir)
+        G = whole_graph_from_node(
+            node_names[0], annot_dir=annot_dir, graph_provider=graph_provider
+        )
         sub = G.subgraph(node_names).copy()
         if sub.number_of_edges() == 0:
             return None
@@ -78,7 +80,7 @@ def nodeset_to_instance(mgraph, nodeset, graph_dir, reversed_node_map):
         return None
 
 
-def export_from_maga(mgraph, maga_graph, graph_dir, max_instances=20):
+def export_from_maga(mgraph, maga_graph, graph_dir, max_instances=20, graph_provider=None):
     """Export motifs from MAGA graph - each node_set frozenset is a connected instance."""
     reversed_node_map = mgraph.reversed_node_map
     motifs = []
@@ -92,7 +94,10 @@ def export_from_maga(mgraph, maga_graph, graph_dir, max_instances=20):
         for nodeset in node_set:
             if len(instances) >= max_instances:
                 break
-            inst = nodeset_to_instance(mgraph, nodeset, graph_dir, reversed_node_map)
+            inst = nodeset_to_instance(
+                mgraph, nodeset, graph_dir, reversed_node_map,
+                graph_provider=graph_provider,
+            )
             if inst:
                 instances.append(inst)
 
@@ -125,16 +130,20 @@ def export_metagraph(metagraph_path, output_path, max_instances=20, maga_graph=N
     with open(metagraph_path, 'rb') as f:
         mgraph = pickle.load(f)
 
+    graph_provider = getattr(mgraph, 'graph_provider', None)
     graph_dir = getattr(mgraph, 'graph_dir', None)
-    if not graph_dir:
+    if graph_provider is None and not graph_dir:
         base = os.path.dirname(os.path.abspath(metagraph_path))
         graph_dir = os.path.join(base, '..', 'data', 'graphs', 'rnaglib_nr_whole')
-    graph_dir = os.path.abspath(graph_dir)
-    if not os.path.isdir(graph_dir):
-        proj_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(metagraph_path))))
-        graph_dir = os.path.abspath(os.path.join(proj_root, graph_dir))
-    if not os.path.isdir(graph_dir):
-        raise FileNotFoundError(f"Graph directory not found: {graph_dir}")
+    if graph_dir:
+        graph_dir = os.path.abspath(graph_dir)
+        if not os.path.isdir(graph_dir):
+            proj_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(metagraph_path))))
+            graph_dir = os.path.abspath(os.path.join(proj_root, graph_dir))
+        if not os.path.isdir(graph_dir):
+            raise FileNotFoundError(f"Graph directory not found: {graph_dir}")
+    elif graph_provider is None:
+        raise FileNotFoundError("Meta-graph has no graph_dir or graph_provider")
 
     # Load or build MAGA graph
     if maga_graph is None:
@@ -148,7 +157,11 @@ def export_metagraph(metagraph_path, output_path, max_instances=20, maga_graph=N
             from build_motifs.motifs import maga
             maga_graph = maga(mgraph, levels=6)
 
-    motifs = export_from_maga(mgraph, maga_graph, graph_dir, max_instances=max_instances)
+    motifs = export_from_maga(
+        mgraph, maga_graph, graph_dir or '',
+        max_instances=max_instances,
+        graph_provider=graph_provider,
+    )
 
     out = {
         'meta_graph': os.path.splitext(os.path.basename(metagraph_path))[0],

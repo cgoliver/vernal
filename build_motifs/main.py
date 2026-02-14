@@ -25,8 +25,8 @@ def get_args():
                                         default="default_name",
                                         help="ID of trained embedding model")
     parser.add_argument("--graphs", "-g", type=str,
-                                          default="data/graphs/rna_graphs_nr",
-                                          help="Path to full graphs.")
+                                          default=None,
+                                          help="Path to local .nx graphs. If not set, use rnaglib RNADataset (default).")
     parser.add_argument('--mgg_name', "-mn", type=str,
                                   default="default_name",
                                   help="The name of the pickled meta graph.")
@@ -47,6 +47,8 @@ def get_args():
                                         remove infrequent edges")
     parser.add_argument("--nc", default=False, action='store_true',
                                 help="To use only nc"),
+    parser.add_argument("--max_graphs", type=int, default=None,
+                        help="Max graphs for meta-graph (default: all)"),
 
     # Motif build args
 
@@ -82,16 +84,41 @@ def get_args():
 
 def build_mgraph(args):
     from build_motifs.meta_graph import MGraphAll
+    from tools.graph_provider import RNADatasetGraphProvider
+
+    graph_provider = None
+    graph_dir = args.graphs
+    if args.graphs is None:
+        try:
+            from rnaglib.dataset import RNADataset
+            print(">>> Loading RNADataset from rnaglib...")
+            dataset = RNADataset(
+                redundancy='nr',
+                version='2.0.2',
+                get_pdbs=False,
+                debug=False,
+                in_memory=False,
+            )
+            graph_provider = RNADatasetGraphProvider(dataset)
+            graph_dir = None
+            print(f">>> Using {len(graph_provider)} graphs from RNADataset")
+        except ImportError as e:
+            raise ImportError(
+                "rnaglib required for default graph loading. Install: pip install rnaglib, "
+                "or use -g <path> to load from local .nx files"
+            ) from e
+
     start = time.perf_counter()
     mgg = MGraphAll(
-                    run = args.rgcn,
+                    run=args.rgcn,
                     clust_algo=args.clust_algo,
                     n_components=args.n_components,
                     optimize=False,
                     min_edge=args.min_motif,
                     max_var=args.max_var,
-                    max_graphs=None,
-                    graph_dir=args.graphs,
+                    max_graphs=args.max_graphs,
+                    graph_dir=graph_dir,
+                    graph_provider=graph_provider,
                     nc_only=args.nc
                     )
     print(f"Built Meta Graph in {time.perf_counter() - start} s")

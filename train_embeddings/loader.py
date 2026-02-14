@@ -18,6 +18,20 @@ from tools.node_sim import k_block_list, simfunc_from_hparams, EDGE_MAP
 from tools.graph_utils import fetch_graph, read_nx_graph
 
 
+def _graph_to_dgl(graph, edge_map):
+    """Convert networkx graph to DGL with one_hot edge attrs. Handles empty graphs."""
+    graph = nx.to_undirected(graph)
+    if graph.number_of_edges() == 0 and graph.number_of_nodes() > 0:
+        default_label = next(iter(edge_map.keys()))
+        node0 = list(graph.nodes())[0]
+        graph.add_edge(node0, node0, label=default_label)
+    one_hot = {edge: torch.tensor(edge_map[label]) for edge, label in
+               (nx.get_edge_attributes(graph, 'label')).items()}
+    nx.set_edge_attributes(graph, name='one_hot', values=one_hot)
+    graph_directed = graph.to_directed()
+    return dgl.from_networkx(graph_directed, edge_attrs=['one_hot'])
+
+
 class V1(Dataset):
     def __init__(self,
                  edge_map,
@@ -60,6 +74,14 @@ class V1(Dataset):
         else:
             graph = read_nx_graph(g_path)
         graph = nx.to_undirected(graph)
+
+        # Handle graphs with no edges: DGL.from_networkx fails with empty edge_attrs
+        if graph.number_of_edges() == 0 and graph.number_of_nodes() > 0:
+            # Add a self-loop with default edge type so the model can run
+            default_label = next(iter(self.edge_map.keys()))
+            node0 = list(graph.nodes())[0]
+            graph.add_edge(node0, node0, label=default_label)
+
         one_hot = {edge: torch.tensor(self.edge_map[label]) for edge, label in
                    (nx.get_edge_attributes(graph, 'label')).items()}
         nx.set_edge_attributes(graph, name='one_hot', values=one_hot)
@@ -172,7 +194,8 @@ class InferenceLoader(Loader):
                  annotated_path,
                  batch_size=5,
                  num_workers=20,
-                 edge_map=EDGE_MAP):
+                 edge_map=EDGE_MAP,
+                 graph_provider=None):
         super().__init__(
             annotated_path=annotated_path,
             batch_size=batch_size,
@@ -181,6 +204,7 @@ class InferenceLoader(Loader):
         )
         self.dataset.all_graphs = list_to_predict
         self.dataset.path = annotated_path
+        self.graph_provider = graph_provider
         print(len(list_to_predict))
 
     def get_data(self):
@@ -191,6 +215,68 @@ class InferenceLoader(Loader):
                                   num_workers=self.num_workers,
                                   collate_fn=collate_block)
         return train_loader
+
+
+class V1RNADataset(Dataset):
+    """
+    Dataset backed by a GraphProvider (e.g. RNADatasetGraphProvider).
+    Converts to vernal format on-the-fly and yields DGL graphs for inference.
+    """
+    def __init__(self, graph_provider, edge_map=EDGE_MAP):
+        from tools.graph_provider import GraphProvider
+        assert isinstance(graph_provider, GraphProvider)
+        self.graph_provider = graph_provider
+        self.edge_map = edge_map
+        self.num_edge_types = max(edge_map.values()) + 1
+        self.path = None  # no file path when using provider
+        self.all_graphs = self._filter_valid_names()
+
+    def _filter_valid_names(self):
+        """Filter out graphs with 0 nodes or 0 edges (DGL conversion fails)."""
+        valid = []
+        for i, name in enumerate(self.graph_provider.list_names()):
+            try:
+                G = self.graph_provider.get_graph_by_index(i)
+                if G.number_of_nodes() > 0 and G.number_of_edges() > 0:
+                    valid.append(name)
+            except Exception:
+                pass
+        if len(valid) < len(self.graph_provider):
+            print(f">>> Filtered out {len(self.graph_provider) - len(valid)} empty/invalid graphs")
+        return valid
+
+    def __len__(self):
+        return len(self.all_graphs)
+
+    def __getitem__(self, idx):
+        name = self.all_graphs[idx]
+        graph = self.graph_provider.get_graph_by_name(name)
+        g_dgl = _graph_to_dgl(graph, self.edge_map)
+        return g_dgl, 0, [idx]
+
+
+class InferenceLoaderRNADataset:
+    """Loader for inference using RNADataset/GraphProvider instead of .nx files."""
+    def __init__(self, graph_provider, batch_size=5, num_workers=20, edge_map=EDGE_MAP):
+        from tools.graph_provider import GraphProvider
+        assert isinstance(graph_provider, GraphProvider)
+        self.graph_provider = graph_provider
+        self.batch_size = batch_size
+        self.num_workers = num_workers
+        self.dataset = V1RNADataset(graph_provider, edge_map=edge_map)
+        self.node_simfunc = None
+        self.num_edge_types = self.dataset.num_edge_types
+        self.graph_provider = graph_provider
+
+    def get_data(self):
+        collate_block = collate_wrapper(None)
+        return DataLoader(
+            dataset=self.dataset,
+            shuffle=False,
+            batch_size=self.batch_size,
+            num_workers=self.num_workers,
+            collate_fn=collate_block,
+        )
 
 
 def loader_from_hparams(annotated_path, hparams, list_inference=None):

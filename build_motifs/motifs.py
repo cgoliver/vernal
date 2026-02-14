@@ -182,9 +182,12 @@ def maga(mgraph, levels=10):
                 if boring_clusters[clust]['samples'] < n_boring_samples:
                     boring_clusters[clust]['samples'] += 1
                     node_id = mgraph.reversed_node_map[node]
+                    graph_provider = getattr(mgraph, 'graph_provider', None)
                     graph_dir = getattr(mgraph, 'graph_dir', None)
                     annot_dir = os.path.abspath(graph_dir) if graph_dir else None
-                    G = whole_graph_from_node(node_id, annot_dir=annot_dir) if annot_dir else whole_graph_from_node(node_id)
+                    G = whole_graph_from_node(
+                        node_id, annot_dir=annot_dir, graph_provider=graph_provider
+                    ) if (annot_dir or graph_provider) else whole_graph_from_node(node_id)
                     if not has_NC_bfs(G, node_id, depth=1):
                         boring_clusters[clust]['boring'] += 1
 

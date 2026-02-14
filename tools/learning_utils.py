@@ -16,10 +16,42 @@ script_dir = os.path.dirname(os.path.realpath(__file__))
 if __name__ == "__main__":
     sys.path.append(os.path.join(script_dir, '..'))
 
-from train_embeddings.loader import Loader, loader_from_hparams
+from train_embeddings.loader import Loader, loader_from_hparams, InferenceLoaderRNADataset
 from train_embeddings.model import Model, model_from_hparams
 from train_embeddings.learn import send_graph_to_device
 from tools.graph_utils import fetch_graph, get_nc_nodes_index
+
+
+def _filter_valid_graphs(graphs_path, graph_list):
+    """Filter out graphs with 0 nodes or 0 edges (DGL conversion fails on these)."""
+    valid = []
+    for name in graph_list:
+        try:
+            g_path = os.path.join(graphs_path, name)
+            G = fetch_graph(g_path)
+            if G.number_of_nodes() > 0 and G.number_of_edges() > 0:
+                valid.append(name)
+        except Exception:
+            pass
+    if len(valid) < len(graph_list):
+        print(f">>> Filtered out {len(graph_list) - len(valid)} empty/invalid graphs")
+    return valid
+
+
+def _filter_valid_graphs_provider(graph_provider, graph_list):
+    """Filter graph list using a GraphProvider (e.g. RNADataset-backed)."""
+    valid = []
+    provider_names = set(graph_provider.list_names())
+    for name in graph_list:
+        try:
+            G = graph_provider.get_graph_by_name(name)
+            if G.number_of_nodes() > 0 and G.number_of_edges() > 0:
+                valid.append(name)
+        except Exception:
+            pass
+    if len(valid) < len(graph_list):
+        print(f">>> Filtered out {len(graph_list) - len(valid)} empty/invalid graphs")
+    return valid
 
 
 def remove(name):
@@ -241,31 +273,59 @@ def inference_on_dir(run,
 
 
 def inference_on_list(run,
-                      graphs_path,
-                      graph_list,
+                      graphs_path=None,
+                      graph_list=None,
+                      graph_provider=None,
                       max_graphs=None,
                       get_sim_mat=False,
                       nc_only=False,
                       device='cuda' if torch.cuda.is_available() else 'cpu'
                       ):
     """
-    Same as before but one needs to provide a list of graphs name files in the annot path (of the form id_chunk_annot.p)
-    :param run:
-    :param graph_dir:
-    :param max_graphs:
-    :param get_sim_mat:
-    :param split_mode:
-    :param device:
-    :return:
-    """
+    Run inference on a list of graphs.
 
-    hparams = run_to_hparams(run)
-    model = load_model(run)
-    inference_loader = loader_from_hparams(annotated_path=graphs_path,
-                                           hparams=hparams,
-                                           list_inference=graph_list
-                                           )
-    loader = inference_loader.get_data()
+    Supports two modes:
+    1. File-based: graphs_path + graph_list (load from .nx files)
+    2. RNADataset-based: graph_provider (GraphProvider wrapping RNADataset)
+
+    :param run: Model run ID
+    :param graphs_path: Path to directory with .nx graphs (for file-based mode)
+    :param graph_list: List of graph filenames (for file-based mode)
+    :param graph_provider: GraphProvider instance (e.g. RNADatasetGraphProvider) for dataset mode
+    :param max_graphs: Max number of graphs to process
+    :param get_sim_mat: Whether to compute similarity matrix
+    :param nc_only: Only embed non-canonical nodes
+    :param device: Device for inference
+    :return: dict with Z, node_to_gind, node_to_zind, ind_to_node, node_id_list
+    """
+    if graph_provider is not None:
+        # RNADataset / GraphProvider mode
+        if graph_list is None:
+            graph_list = graph_provider.list_names()
+        graph_list = _filter_valid_graphs_provider(graph_provider, graph_list)
+        hparams = run_to_hparams(run)
+        model = load_model(run)
+        inference_loader = InferenceLoaderRNADataset(
+            graph_provider=graph_provider,
+            batch_size=hparams.get('argparse', 'batch_size'),
+            num_workers=hparams.get('argparse', 'workers'),
+            edge_map=hparams.get('edges', 'edge_map'),
+        )
+        inference_loader.dataset.all_graphs = graph_list
+        loader = inference_loader.get_data()
+    else:
+        # File-based mode (legacy)
+        if graphs_path is None or graph_list is None:
+            raise ValueError("Provide either graph_provider or (graphs_path, graph_list)")
+        graph_list = _filter_valid_graphs(graphs_path, graph_list)
+        hparams = run_to_hparams(run)
+        model = load_model(run)
+        inference_loader = loader_from_hparams(annotated_path=graphs_path,
+                                               hparams=hparams,
+                                               list_inference=graph_list
+                                               )
+        loader = inference_loader.get_data()
+
     model_outputs = predict(model,
                             loader,
                             max_graphs=max_graphs,
@@ -327,11 +387,20 @@ def predict(model,
 
     all_graphs = loader.dataset.all_graphs
     graph_dir = loader.dataset.path
+    graph_provider = getattr(loader.dataset, 'graph_provider', None)
     Z = []
     Ks = []
     g_inds = []
     node_ids = []
     tot = max_graphs if max_graphs is not None else len(loader)
+
+    def _get_graph_for_batch(graph_index):
+        """Get networkx graph for node mapping - from provider or file."""
+        name = all_graphs[graph_index]
+        if graph_provider is not None:
+            return graph_provider.get_graph_by_name(name)
+        g_path = os.path.join(graph_dir, name)
+        return fetch_graph(g_path)
 
     model = model.to(device)
     model.eval()
@@ -351,8 +420,7 @@ def predict(model,
                 keep_indices = list(range(n_nodes))
 
                 # list of node ids from original graph
-                g_path = os.path.join(graph_dir, all_graphs[graph_index])
-                G = fetch_graph(g_path)
+                G = _get_graph_for_batch(graph_index)
 
                 assert n_nodes == len(G.nodes())
                 if nc_only:
@@ -413,6 +481,13 @@ def predict_gen(model,
     """
     all_graphs = loader.dataset.all_graphs
     graph_dir = loader.dataset.path
+    graph_provider = getattr(loader.dataset, 'graph_provider', None)
+
+    def _get_graph_for_batch(graph_index):
+        name = all_graphs[graph_index]
+        if graph_provider is not None:
+            return graph_provider.get_graph_by_name(name)
+        return fetch_graph(os.path.join(graph_dir, name))
 
     model = model.to(device)
     Ks = []
@@ -434,8 +509,7 @@ def predict_gen(model,
                 g_inds.extend(rep)
 
                 # list of node ids from original graph
-                g_path = os.path.join(graph_dir, all_graphs[graph_index])
-                G = fetch_graph(g_path)
+                G = _get_graph_for_batch(graph_index)
                 g_nodes = sorted(G.nodes())
                 node_ids.extend([g_nodes[i] for i in range(n_nodes)])
             if max_graphs is not None and i > max_graphs - 1:
