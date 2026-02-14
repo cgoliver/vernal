@@ -147,18 +147,3 @@ To export manually (e.g. with different options):
 ```bash
 python tools/export_metagraph.py results/mggs/my_metagraph.p -o motifs.json --max-instances 10
 ```
-
-### Aquinas server setup
-
-```bash
-# 1. Clone and setup
-git clone <repo> vernal && cd vernal
-bash scripts/setup_aquinas.sh
-
-# 2. Prepare data (interactive or SLURM)
-python prepare_data/main.py -n rnaglib_full --source rnaglib
-# Or: sbatch scripts/aquinas_prepare_slurm.sh
-
-# 3. Train and build (SLURM)
-sbatch scripts/aquinas_slurm.sh
-```
