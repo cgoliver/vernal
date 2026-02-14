@@ -65,9 +65,12 @@ def nodeset_to_instance(mgraph, nodeset, graph_dir, reversed_node_map, graph_pro
         for n in sub.nodes():
             idx = name_to_idx.get(n)
             cluster_id = _to_int(mgraph.labels[idx]) if idx is not None else None
+            # Label as <chain>.<residue number> for graph view
+            parts = str(n).split('.')
+            label = f"{parts[-2]}.{parts[-1]}" if len(parts) >= 3 else (parts[-1] if parts else str(n))
             nodes.append({
                 'id': n,
-                'label': n.split('.')[-1] if '.' in n else str(n),
+                'label': label,
                 'cluster_id': cluster_id,
             })
         links = [{'source': u, 'target': v, 'label': d.get('label', '')} for u, v, d in sub.edges(data=True)]

@@ -142,6 +142,8 @@ The meta-graph and motifs will be built and dumped in `results/mggs/my_metagraph
 
 The motif building step automatically exports the meta-graph to JSON in `results/mggs/my_metagraph.json`. Open `visualize_motifs.html` in a browser and load that JSON file to view motifs.
 
+![](images/motif-viewer.png)
+
 To export manually (e.g. with different options):
 
 ```bash

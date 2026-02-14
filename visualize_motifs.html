@@ -224,6 +224,55 @@
             z-index: 2;
         }
 
+        .pdb-info-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-height: 140px;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.96);
+            border-top: 1px solid #e0e0e0;
+            padding: 10px 12px;
+            font-size: 12px;
+            color: #444;
+            z-index: 2;
+        }
+
+        .pdb-info-panel.hidden {
+            display: none;
+        }
+
+        .pdb-info-content h4 {
+            font-size: 12px;
+            margin: 0 0 6px 0;
+        }
+
+        .pdb-info-content h4 a {
+            color: #2196f3;
+            text-decoration: none;
+        }
+
+        .pdb-info-content h4 a:hover {
+            text-decoration: underline;
+        }
+
+        .pdb-info-content .pdb-row {
+            margin-bottom: 4px;
+        }
+
+        .pdb-info-content .pdb-row strong {
+            color: #333;
+            margin-right: 6px;
+        }
+
+        .pdb-info-content .residues-list {
+            font-family: monospace;
+            font-size: 11px;
+            margin-top: 4px;
+            word-break: break-all;
+        }
+
         .pdb3d-container .empty-state {
             position: absolute;
             inset: 0;
@@ -367,6 +416,9 @@
                 <div class="pdb3d-container">
                     <div class="pdb3d-label">3D Structure (PDB)</div>
                     <div id="pdb3d-viewer"></div>
+                    <div class="pdb-info-panel hidden" id="pdbInfoPanel">
+                        <div class="pdb-info-content" id="pdbInfoContent"></div>
+                    </div>
                     <div class="empty-state" id="pdb3dEmptyState">
                         <p>3D structure will appear here</p>
                         <p style="font-size: 11px;">Shows motif residues highlighted in the selected PDB</p>
@@ -688,6 +740,56 @@
             }
 
             displayPdb3D(graphData, colorScale);
+            updatePdbInfoPanel(graphData);
+        }
+
+        function updatePdbInfoPanel(graphData) {
+            const panel = document.getElementById('pdbInfoPanel');
+            const content = document.getElementById('pdbInfoContent');
+            if (!graphData || !graphData.nodes || graphData.nodes.length === 0) {
+                panel.classList.add('hidden');
+                return;
+            }
+            const residues = graphData.nodes.map(n => parseNodeId(n.id)).filter(Boolean);
+            const pdbid = (graphData.graph_id || residues[0]?.pdbid || '').toUpperCase();
+            if (!pdbid) {
+                panel.classList.add('hidden');
+                return;
+            }
+            panel.classList.remove('hidden');
+            const resList = residues
+                .filter(r => r.chain && r.resi != null)
+                .sort((a, b) => (a.chain !== b.chain) ? a.chain.localeCompare(b.chain) : a.resi - b.resi)
+                .map(r => `${r.chain}.${r.resi}`)
+                .join(', ');
+            content.innerHTML = `
+                <h4><a href="https://www.rcsb.org/structure/${pdbid}" target="_blank" rel="noopener">PDB ${pdbid}</a></h4>
+                <div class="pdb-row"><strong>Title:</strong> <span id="pdbTitle">Loading...</span></div>
+                <div class="pdb-row" id="pdbExtraRow"></div>
+                <div class="pdb-row"><strong>Residues:</strong></div>
+                <div class="residues-list">${resList || '-'}</div>
+            `;
+            fetch(`https://data.rcsb.org/rest/v1/core/entry/${pdbid}`)
+                .then(r => r.ok ? r.json() : null)
+                .then(data => {
+                    const titleEl = document.getElementById('pdbTitle');
+                    const extraEl = document.getElementById('pdbExtraRow');
+                    if (data) {
+                        if (titleEl) titleEl.textContent = data.struct?.title || 'N/A';
+                        if (extraEl) {
+                            const parts = [];
+                            if (data.rcsb_entry_info?.resolution_combined) parts.push(`Resolution: ${data.rcsb_entry_info.resolution_combined} Å`);
+                            const methods = data.exptl?.map(e => e.method)?.filter(Boolean);
+                            if (methods?.length) parts.push(`Method: ${[...new Set(methods)].join(', ')}`);
+                            extraEl.textContent = parts.length ? parts.join(' • ') : '';
+                            extraEl.style.display = parts.length ? 'block' : 'none';
+                        }
+                    }
+                })
+                .catch(() => {
+                    const titleEl = document.getElementById('pdbTitle');
+                    if (titleEl) titleEl.textContent = 'N/A (fetch failed)';
+                });
         }
 
         function clearGraph() {
@@ -712,6 +814,7 @@
                 pdb3dViewer.render();
             }
             document.getElementById('pdb3dEmptyState').style.display = 'flex';
+            document.getElementById('pdbInfoPanel').classList.add('hidden');
         }
 
         function displayPdb3D(graphData, colorScale) {
