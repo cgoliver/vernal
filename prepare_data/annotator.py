@@ -17,6 +17,7 @@ import networkx as nx
 from tqdm import tqdm
 
 from tools.graphlet_hash import extract_graphlet, build_hash_table, Hasher
+from tools.graph_utils import read_nx_graph
 
 
 def cline():
@@ -147,7 +148,7 @@ def annotate_one(args):
         if re_annotate:
             graph = pickle.load(open(os.path.join(graph_path, g), 'rb'))['graph']
         else:
-            graph = nx.read_gpickle(os.path.join(graph_path, g))
+            graph = read_nx_graph(os.path.join(graph_path, g))
         rings = build_ring_tree_from_graph(graph, depth=5, hasher=hasher)
 
         if dump_path:

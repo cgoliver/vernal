@@ -25,8 +25,8 @@ def get_args():
                                         default="default_name",
                                         help="ID of trained embedding model")
     parser.add_argument("--graphs", "-g", type=str,
-                                          default="data/graphs/rna_graphs_nr",
-                                          help="Path to full graphs.")
+                                          default=None,
+                                          help="Path to local .nx graphs. If not set, use rnaglib RNADataset (default).")
     parser.add_argument('--mgg_name', "-mn", type=str,
                                   default="default_name",
                                   help="The name of the pickled meta graph.")
@@ -47,6 +47,8 @@ def get_args():
                                         remove infrequent edges")
     parser.add_argument("--nc", default=False, action='store_true',
                                 help="To use only nc"),
+    parser.add_argument("--max_graphs", type=int, default=None,
+                        help="Max graphs for meta-graph (default: all)"),
 
     # Motif build args
 
@@ -82,16 +84,41 @@ def get_args():
 
 def build_mgraph(args):
     from build_motifs.meta_graph import MGraphAll
+    from tools.graph_provider import RNADatasetGraphProvider
+
+    graph_provider = None
+    graph_dir = args.graphs
+    if args.graphs is None:
+        try:
+            from rnaglib.dataset import RNADataset
+            print(">>> Loading RNADataset from rnaglib...")
+            dataset = RNADataset(
+                redundancy='nr',
+                version='2.0.2',
+                get_pdbs=False,
+                debug=False,
+                in_memory=False,
+            )
+            graph_provider = RNADatasetGraphProvider(dataset)
+            graph_dir = None
+            print(f">>> Using {len(graph_provider)} graphs from RNADataset")
+        except ImportError as e:
+            raise ImportError(
+                "rnaglib required for default graph loading. Install: pip install rnaglib, "
+                "or use -g <path> to load from local .nx files"
+            ) from e
+
     start = time.perf_counter()
     mgg = MGraphAll(
-                    run = args.rgcn,
+                    run=args.rgcn,
                     clust_algo=args.clust_algo,
                     n_components=args.n_components,
                     optimize=False,
                     min_edge=args.min_motif,
                     max_var=args.max_var,
-                    max_graphs=None,
-                    graph_dir=args.graphs,
+                    max_graphs=args.max_graphs,
+                    graph_dir=graph_dir,
+                    graph_provider=graph_provider,
                     nc_only=args.nc
                     )
     print(f"Built Meta Graph in {time.perf_counter() - start} s")
@@ -108,9 +135,9 @@ def build_mgraph(args):
 def build_motifs(mgraph, args):
     from build_motifs.motifs import maga
     maga_graph = maga(mgraph, levels=args.levels)
-    pass
+    return maga_graph
 
-def retrieve():
+def retrieve(args):
     pass
 
 def main():
@@ -122,12 +149,33 @@ def main():
                              os.path.join("results", "mggs", args.meta_graph + ".p"),
                              "rb"
                             ))
+        mgg_name = args.meta_graph
     else:
         print(">>> Building new meta graph.")
         mgraph = build_mgraph(args)
+        mgg_name = args.mgg_name
 
+    maga_graph = None
     if args.do_build:
-        build_motifs(mgraph, args)
+        maga_graph = build_motifs(mgraph, args)
+        # Save MAGA graph for export
+        maga_path = os.path.join("results", "mggs", mgg_name + "_maga.p")
+        pickle.dump(maga_graph, open(maga_path, 'wb'))
+        print(f">>> Saved MAGA graph to {maga_path}")
+
+    # Auto-export to JSON for the motif viewer
+    try:
+        from tools.export_metagraph import export_metagraph
+        json_path = os.path.join("results", "mggs", mgg_name + ".json")
+        export_metagraph(
+            os.path.join("results", "mggs", mgg_name + ".p"),
+            json_path,
+            max_instances=20,
+            maga_graph=maga_graph,
+        )
+        print(f">>> Exported motifs to {json_path} (open visualize_motifs.html to view)")
+    except Exception as e:
+        print(f">>> Could not export JSON for viewer: {e}")
 
     if args.do_retrieve:
         retrieve(args)

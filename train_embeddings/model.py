@@ -1,7 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from dgl.nn.pytorch.conv import RelGraphConv
+import dgl
+from dgl.nn import RelGraphConv
 
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -86,17 +87,19 @@ class Embedder(nn.Module):
         return next(self.parameters()).device
 
     def build_hidden_layer(self, in_dim, out_dim):
+        num_bases = None if self.num_bases == -1 else self.num_bases
         return RelGraphConv(in_dim, out_dim, self.num_rels,
-                            num_bases=self.num_bases,
+                            num_bases=num_bases,
                             activation=F.relu,
                             self_loop=self.self_loop)
 
     # No activation for the last layer
     def build_output_layer(self, in_dim, out_dim, conv=False):
         if self.conv_output:
+            num_bases = None if self.num_bases == -1 else self.num_bases
             return RelGraphConv(in_dim, out_dim,
                                 self.num_rels,
-                                num_bases=self.num_bases,
+                                num_bases=num_bases,
                                 self_loop=self.self_loop,
                                 activation=None)
         else:
@@ -104,13 +107,19 @@ class Embedder(nn.Module):
 
     def forward(self, g):
         # h = g.in_degrees().view(-1, 1).float().to(self.current_device)
-        h = torch.ones(len(g.nodes())).view(-1, 1).to(self.current_device)
+        n_nodes = g.num_nodes()
+        h = torch.ones(n_nodes).view(-1, 1).to(self.current_device)
+        etypes = g.edata['one_hot']
+        if etypes.dim() > 1:
+            etypes = etypes.squeeze(-1).long()
+        else:
+            etypes = etypes.long()
         for i, layer in enumerate(self.layers):
             # layer(g)
             if not self.conv_output and (i == len(self.layers) - 1):
                 h = layer(h)
             else:
-                h = layer(g, h, g.edata['one_hot'])
+                h = layer(g, h, etypes)
         g.ndata['h'] = h
         return g.ndata['h']
 
@@ -234,24 +243,39 @@ class Model(nn.Module):
         if self.weighted:
             assert graph is not None
             import networkx as nx
-            nx_graph = graph.to_networkx(edge_attrs=['one_hot'])
+            nx_graph = dgl.to_networkx(graph, edge_attrs=['one_hot'])
             nx_graph = nx.to_undirected(nx_graph)
             ordered = sorted(nx_graph.nodes())
-            adj_matrix_full = nx.to_scipy_sparse_matrix(nx_graph, nodelist=ordered)
+            try:
+                adj_matrix_full = nx.to_scipy_sparse_array(nx_graph, nodelist=ordered)
+            except AttributeError:
+                adj_matrix_full = nx.to_scipy_sparse_matrix(nx_graph, nodelist=ordered)
 
             # copy the matrix with only the non canonical
-            extracted_edges = [(u, v) for u, v, e in nx_graph.edges.data('one_hot', default='0')
-                               if e not in [0, 6]]
+            def _edge_type_val(e):
+                if hasattr(e, 'item'):
+                    return e.item()
+                return int(e) if e is not None else 0
+
+            extracted_edges = [(u, v) for u, v, e in nx_graph.edges.data('one_hot', default=0)
+                               if _edge_type_val(e) not in [0, 6]]
             extracted_graph = nx.Graph()
             extracted_graph.add_nodes_from(ordered)
             extracted_graph.add_edges_from(extracted_edges)
             extracted_graph = nx.to_undirected(extracted_graph)
-            adj_matrix_small = nx.to_scipy_sparse_matrix(extracted_graph, nodelist=ordered)
+            try:
+                adj_matrix_small = nx.to_scipy_sparse_array(extracted_graph, nodelist=ordered)
+            except AttributeError:
+                adj_matrix_small = nx.to_scipy_sparse_matrix(extracted_graph, nodelist=ordered)
 
             # This is a matrix with non zero entries for non canonical relationships
             # One must then expand it based on the number of hops
-            adj_matrix_full = np.array(adj_matrix_full.todense())
-            adj_matrix_small = np.array(adj_matrix_small.todense())
+            adj_matrix_full = np.asarray(adj_matrix_full)
+            if hasattr(adj_matrix_full, 'toarray'):
+                adj_matrix_full = adj_matrix_full.toarray()
+            adj_matrix_small = np.asarray(adj_matrix_small)
+            if hasattr(adj_matrix_small, 'toarray'):
+                adj_matrix_small = adj_matrix_small.toarray()
 
             expanded_connectivity = [np.eye(len(adj_matrix_full))]
             for _ in self.dims[:-1]:

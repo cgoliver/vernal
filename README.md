@@ -39,53 +39,66 @@ For full usage, run `python <dir>/main.py -h`
 
 ## 0. Install Dependencies
 
-The command below will install the full list of dependencies.
+**Recommended:** Use the virtualenv in `.venv`:
 
-The main packages we use are:
+```
+python -m venv .venv
+source .venv/bin/activate   # On Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+```
 
-* multiset
-* NetworkX 
-* BioPython
-* Pytorch
-* DGL (Deep Graph Library)
-* Scikit-learn
+Alternatively, use conda:
 
 ```
 conda env create -f environment.yml
 conda activate vernal
 ```
 
+The main packages we use are:
+
+* multiset
+* NetworkX (>=3.0)
+* BioPython
+* PyTorch (>=2.0)
+* DGL (Deep Graph Library, >=2.0)
+* Scikit-learn
+
 ## 1. Data Preparation
 
-This step loads the whole PDBs, creates uniformly-sized chunks (`chopper.py`) and builds
-newtorkx graphs for each chunk.
+This step loads RNA structures, creates uniformly-sized chunks (`chopper.py`) and builds
+networkx graphs for each chunk.
 
 We build a rooted subgraph and graphlet hashtable for each node in `annotate.py` to
 speed up the similarity function computations at training time.
 
-Create two directories where the data will be kept:
+### Option A: Use rnaglib (recommended)
+
+Data is now available via the [rnaglib](https://rnaglib.org) Python package, which provides
+RNA 2.5D graphs and crystal structures from Zenodo. This replaces the previous MEGA links.
 
 ```
-mkdir data/graphs
-mkdir data/annotated
+python prepare_data/main.py -n rnaglib_nr --source rnaglib
 ```
 
-Data building and loading will take some time (~1 hr), you can skip all the data preparation if you want to use a [pre-built dataset](https://mega.nz/file/pCJGUIQA#Z6pNGjrk-TCC27aUeWhEcjLjGtlrs46D61PNRT2WeZ0), just download and move to the `data/annotated/` folder and move to step 2.
+This will:
+1. Download the non-redundant RNA dataset from rnaglib (~/.rnaglib)
+2. Download mmCIF structures from the PDB
+3. Convert graphs to vernal format and run the full preprocessing pipeline
 
-Download RNA networks:
+The first run may take 30-60 minutes (download + processing).
 
-* [whole crystal structures (non-redundant)](https://mega.nz/file/lLpxjBJA#2H837fqO7VsVnLWpfT0bo4i04lFTeYSul5N_mY8pJW0)
-* [whole graphs (non-redundant)](https://mega.nz/file/YWIHEQxQ#qRUCL8X9eV6NtViXgkZI1lOBlCfc_cWokvMgN-XB9B0)
+### Option B: Manual setup
 
-Save the crystal structures (first link) to the `data/` folder.
-
-Save the whole graphs (second link) to the `data/graphs` folder.
-
-Bulid the dataset. This will take some time as it involves loading many large PDB files.
-
+Create directories and use your own data:
 
 ```
-python prepare_data/main.py -n <data-id>
+mkdir -p data/graphs data/annotated
+```
+
+Place whole graphs (`.nx` format) in `data/graphs/<graph_dir>/` and mmCIF structures in `data/<pdb_dir>/`. Then:
+
+```
+python prepare_data/main.py -n <data-id> -g <graph_dir> -da <pdb_dir>
 ```
 
 ## 2. Subgraph Embeddings
@@ -93,30 +106,48 @@ python prepare_data/main.py -n <data-id>
 Once the training data is built, we train the RGCN.
 
 ```
-python train_embedding/main.py train -n my_model
+python train_embeddings/main.py train -n my_model -da rnaglib_nr
 ```
+
+Use `-da <data-id>` to match the name from step 1 (e.g. `rnaglib_nr` if you used `--source rnaglib`).
 
 ## 3. Motif Building
 
 Finally, the trained RGCN and the whole graphs are used to build motifs.
 
-
-Here, you have three options:
+You have three options:
 
 1. Build/load a new meta graph
 2. Use a meta graph to build motifs
 3. Use a meta graph to search for matches to a graph query
 
-To build a new meta graph: 
-
-If this is the first time you build a meta-graph, create the following folder:
+To build a new meta-graph and motifs (using data from steps 1-2):
 
 ```
-mkdir results/mggs
+mkdir -p results/mggs
+python build_motifs/main.py -r my_model --mgg_name my_metagraph -b
 ```
 
+- `-r my_model`: trained model from step 2
+- `--mgg_name my_metagraph`: output meta-graph name
+- `-b`: build motifs from the meta-graph
+
+By default, graphs are loaded from rnaglib's RNADataset (no prepare_data conversion needed). To use local `.nx` files instead, pass `-g`:
+
 ```
-python build_motifs/main.py -r my_model --mgg_name my_metagraph
+python build_motifs/main.py -r my_model -g data/graphs/rnaglib_nr_whole --mgg_name my_metagraph -b
 ```
 
-The new meta-graph will be built and dumped in the folder `results/mggs/my_metagraph.p`
+The meta-graph and motifs will be built and dumped in `results/mggs/my_metagraph.p`.
+
+### Motif Viewer
+
+The motif building step automatically exports the meta-graph to JSON in `results/mggs/my_metagraph.json`. Open `visualize_motifs.html` in a browser and load that JSON file to view motifs.
+
+![](images/motif-viewer.png)
+
+To export manually (e.g. with different options):
+
+```bash
+python tools/export_metagraph.py results/mggs/my_metagraph.p -o motifs.json --max-instances 10
+```

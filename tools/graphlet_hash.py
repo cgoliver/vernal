@@ -101,8 +101,10 @@ class Hasher:
         return h.hexdigest()
 
 def nei_agg(G, n):
-    x = tuple(sorted([G.nodes()[n]['label']] + [G.nodes()[n]['label'] for n in G.neighbors(n)]))
-    return x
+    n_data = G.nodes[n]
+    center_label = n_data.get('label', '') if isinstance(n_data, dict) else ''
+    neighbor_labels = [G.nodes[nei].get('label', '') for nei in G.neighbors(n)]
+    return tuple(sorted([center_label] + neighbor_labels))
 
 def nei_agg_edges(G, n, node_labels):
     x = [node_labels[n]]

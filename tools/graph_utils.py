@@ -20,6 +20,18 @@ if __name__ == "__main__":
     sys.path.append(os.path.join(script_dir, '..'))
 
 
+def read_nx_graph(path):
+    """Load NetworkX graph from pickle (NetworkX 3 compat, replaces read_gpickle)."""
+    with open(path, 'rb') as f:
+        return pickle.load(f)
+
+
+def write_nx_graph(G, path):
+    """Save NetworkX graph to pickle (NetworkX 3 compat, replaces write_gpickle)."""
+    with open(path, 'wb') as f:
+        pickle.dump(G, f)
+
+
 def graph_from_node(node_id,
                     annot_dir=os.path.join(script_dir, '../data/annotated/whole_v4/')):
     """
@@ -29,15 +41,34 @@ def graph_from_node(node_id,
     return pickle.load(open(graph_path, 'rb'))['graph'].to_undirected()
 
 
-def whole_graph_from_node(node_id, annot_dir=os.path.join(script_dir, graph_dir)):
+def whole_graph_from_node(node_id, annot_dir=os.path.join(script_dir, graph_dir), graph_provider=None):
     """
-        Fetch whole graph from a node id.
+    Fetch whole graph from a node id.
+
+    :param node_id: Can be:
+        - (graph_file, node): tuple from chunked format
+        - node_name: string like "1d0t.A.1" (pdbid.chain.pos) from whole-graph format
+    :param annot_dir: Path to .nx graph directory (used when graph_provider is None)
+    :param graph_provider: GraphProvider instance - overrides annot_dir when set
     """
-    if '_' in node_id[0]:
-        graph_path = os.path.join(annot_dir, node_id[0].split('_')[0] + '.nx')
+    if graph_provider is not None:
+        if isinstance(node_id, (list, tuple)):
+            graph_file = node_id[0]
+            name = graph_file.split('_')[0] if '_' in str(graph_file) else graph_file
+        else:
+            name = str(node_id).split('.')[0].lower()[:4]
+        return graph_provider.get_graph_by_name(name)
+
+    if isinstance(node_id, (list, tuple)):
+        graph_file = node_id[0]
+        if '_' in str(graph_file):
+            graph_path = os.path.join(annot_dir, graph_file.split('_')[0] + '.nx')
+        else:
+            graph_path = os.path.join(annot_dir, graph_file)
     else:
-        graph_path = os.path.join(annot_dir, node_id[0])
-    return nx.read_gpickle(graph_path)
+        pdbid = str(node_id).split('.')[0].lower()[:4]
+        graph_path = os.path.join(annot_dir, pdbid + '.nx')
+    return read_nx_graph(graph_path)
 
 
 def induced_edge_filter(G, roots, depth=1):
@@ -82,7 +113,7 @@ def fetch_graph(g_path):
     if g_path.endswith('.p'):
         graph = pickle.load(open(g_path, 'rb'))['graph']
     else:
-        graph = nx.read_gpickle(g_path)
+        graph = read_nx_graph(g_path)
     return graph
 
 
@@ -111,14 +142,14 @@ def nc_clean_dir(graph_dir, dump_dir):
     """
 
     for g in tqdm(os.listdir(graph_dir)):
-        G = nx.read_gpickle(os.path.join(graph_dir, g))
+        G = read_nx_graph(os.path.join(graph_dir, g))
         keep_nodes = get_nc_nodes(G)
         print(f">>> kept {len(keep_nodes)} nodes of {len(G.nodes())}.")
         kill_nodes = set(G.nodes()) - keep_nodes
         G.remove_nodes_from(kill_nodes)
         dangle_trim(G)
         if len(G.nodes()) > 4:
-            nx.write_gpickle(G, os.path.join(dump_dir, g))
+            write_nx_graph(G, os.path.join(dump_dir, g))
     pass
 
 
@@ -221,13 +252,13 @@ def relabel_nodes_annot(graph_dir, dump=None):
     graphs = []
     for g in tqdm(sorted(os.listdir(graph_dir))):
         try:
-            G = nx.read_gpickle(os.path.join(graph_dir, g))
+            G = read_nx_graph(os.path.join(graph_dir, g))
         except Exception as e:
             print(f"failed on {g}, {e}")
             continue
         G = nx.relabel_nodes(G, {n: (g, n) for i, n in enumerate(sorted(G.nodes()))})
         if not dump is None:
-            nx.write_gpickle(G, os.path.join(graph_dir, g))
+            write_nx_graph(G, os.path.join(graph_dir, g))
         graphs.append(G)
     return graphs
 
@@ -240,14 +271,14 @@ def reindex_nodes_raw(graph_dir, dump=None):
     offset = 0
     for g in tqdm(sorted(os.listdir(graph_dir))):
         try:
-            G = nx.read_gpickle(os.path.join(graph_dir, g))
+            G = read_nx_graph(os.path.join(graph_dir, g))
         except Exception as e:
             print(f"failed on {g}, {e}")
             continue
         G = nx.relabel.convert_node_labels_to_integers(G, first_label=offset, label_attribute='id')
         offset += len(G.nodes())
         if not dump is None:
-            nx.write_gpickle(G, os.path.join(dump, g))
+            write_nx_graph(G, os.path.join(dump, g))
         graphs.append(G)
     return graphs
 
@@ -255,18 +286,22 @@ def reindex_nodes_raw(graph_dir, dump=None):
 def nx_to_dgl(graph, edge_map, embed_dim):
     """
         Networkx graph to DGL.
+        graph: path to pickle file containing graph (dict with 'graph' key or tuple)
     """
 
     import torch
     import dgl
 
-    graph, _, ring = pickle.load(open(graph, 'rb'))
-    one_hot = {edge: edge_map[label] for edge, label in (nx.get_edge_attributes(graph, 'label')).items()}
-    nx.set_edge_attributes(graph, name='one_hot', values=one_hot)
+    data = pickle.load(open(graph, 'rb'))
+    if isinstance(data, dict):
+        graph = data['graph']
+    else:
+        graph, _, _ = data
     one_hot = {edge: torch.tensor(edge_map[label]) for edge, label in (nx.get_edge_attributes(graph, 'label')).items()}
-    g_dgl = dgl.DGLGraph()
-    g_dgl.from_networkx(nx_graph=graph, edge_attrs=['one_hot'])
-    n_nodes = len(g_dgl.nodes())
+    nx.set_edge_attributes(graph, name='one_hot', values=one_hot)
+    graph_directed = graph.to_directed()
+    g_dgl = dgl.from_networkx(graph_directed, edge_attrs=['one_hot'])
+    n_nodes = g_dgl.num_nodes()
     g_dgl.ndata['h'] = torch.ones((n_nodes, embed_dim))
 
     return g_dgl
@@ -278,7 +313,14 @@ def dgl_to_nx(graph, edge_map):
     import dgl
     g = dgl.to_networkx(graph, edge_attrs=['one_hot'])
     edge_map_r = {v: k for k, v in edge_map.items()}
-    nx.set_edge_attributes(g, {(n1, n2): edge_map_r[d['one_hot'].item()] for n1, n2, d in g.edges(data=True)}, 'label')
+
+    def _get_edge_type(d):
+        val = d['one_hot']
+        if hasattr(val, 'item'):
+            return val.item()
+        return int(val)
+
+    nx.set_edge_attributes(g, {(n1, n2): edge_map_r[_get_edge_type(d)] for n1, n2, d in g.edges(data=True)}, 'label')
     return g
 
 
@@ -338,12 +380,12 @@ def remove_non_standard_edges(G):
 def to_orig_all(graph_dir, dump_dir):
     for g in tqdm(os.listdir(graph_dir)):
         try:
-            G = nx.read_gpickle(os.path.join(graph_dir, g))
+            G = read_nx_graph(os.path.join(graph_dir, g))
         except Exception as e:
             print(f">>> failed on {g} with exception {e}")
             continue
         H = to_orig(G)
-        nx.write_gpickle(H, os.path.join(dump_dir, g))
+        write_nx_graph(H, os.path.join(dump_dir, g))
 
 
 def to_orig(G):
@@ -399,7 +441,7 @@ def gap_fill(G, subG):
     # has_dang = False
     for n in subG.nodes():
         if subG.degree(n) == 1:
-            new_nodes.append(subG.neighbors(n))
+            new_nodes.append(next(iter(subG.neighbors(n))))
             # has_dang = True
     # if has_dang:
     # subG = G.subgraph(new_nodes).copy()
@@ -439,7 +481,7 @@ def stack_trim(G):
     Remove stacks from graph.
     """
     is_ww = lambda n, G: 'CWW' in [info['label'] for node, info in G[n].items()]
-    degree = lambda i, G, nodelist: np.sum(nx.to_numpy_matrix(G, nodelist=nodelist)[i])
+    degree = lambda i, G, nodelist: np.sum(nx.to_numpy_array(G, nodelist=nodelist)[i])
     cur_G = G.copy()
     while True:
         stacks = []
@@ -509,9 +551,9 @@ def relabel_graphs(graph_dir, dump_path):
         Take graphs in graph_dir and dump symmetrized in dump_path.
     """
     for g in tqdm(os.listdir(graph_dir)):
-        G = nx.read_gpickle(os.path.join(graph_dir, g))
+        G = read_nx_graph(os.path.join(graph_dir, g))
         G_new = symmetric_elabels(G)
-        nx.write_gpickle(G_new, os.path.join(dump_path, g))
+        write_nx_graph(G_new, os.path.join(dump_path, g))
         pass
     pass
 

@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VeRNAl - Motif Browser</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://3Dmol.org/build/3Dmol-min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        .container { display: flex; height: 100vh; }
+
+        .sidebar {
+            width: 320px;
+            background: white;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            background: #fafafa;
+        }
+
+        .sidebar-header h1 {
+            font-size: 18px;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .sidebar-header p {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .filters {
+            padding: 12px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            background: #f9f9f9;
+        }
+
+        .filter-row {
+            margin-bottom: 12px;
+        }
+
+        .filter-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-row label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 4px;
+        }
+
+        .filter-row input[type="range"] {
+            width: 100%;
+            margin-top: 4px;
+        }
+
+        .filter-value {
+            font-size: 11px;
+            color: #666;
+            margin-left: 4px;
+        }
+
+        .filter-switch {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-switch input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .motif-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .motif-item {
+            padding: 12px 15px;
+            margin-bottom: 8px;
+            background: #f9f9f9;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .motif-item:hover {
+            background: #f0f0f0;
+            border-color: #4a90e2;
+        }
+
+        .motif-item.active {
+            background: #e3f2fd;
+            border-color: #2196f3;
+        }
+
+        .motif-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .motif-id {
+            font-weight: 600;
+            color: #2196f3;
+            font-size: 15px;
+        }
+
+        .motif-stats {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .motif-stats span { margin-right: 12px; }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+        }
+
+        .viewer-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            background: #fafafa;
+        }
+
+        .viewer-header h2 {
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .viewer-controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .viewer-controls select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            background: white;
+            min-width: 200px;
+        }
+
+        .info-panel {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .info-panel strong { color: #333; }
+
+        .viewer-panels {
+            flex: 1;
+            display: flex;
+            gap: 0;
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .graph-container {
+            flex: 1;
+            position: relative;
+            border: 1px solid #e0e0e0;
+            margin: 20px;
+            margin-right: 10px;
+            border-radius: 4px;
+            background: #fff;
+            min-height: 400px;
+        }
+
+        .pdb3d-container {
+            flex: 1;
+            position: relative;
+            border: 1px solid #e0e0e0;
+            margin: 20px;
+            margin-left: 10px;
+            border-radius: 4px;
+            background: #e8e8e8;
+            min-height: 400px;
+        }
+
+        .pdb3d-label {
+            position: absolute;
+            top: 8px;
+            left: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #555;
+            z-index: 2;
+        }
+
+        .pdb-info-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            max-height: 140px;
+            overflow-y: auto;
+            background: rgba(255,255,255,0.96);
+            border-top: 1px solid #e0e0e0;
+            padding: 10px 12px;
+            font-size: 12px;
+            color: #444;
+            z-index: 2;
+        }
+
+        .pdb-info-panel.hidden {
+            display: none;
+        }
+
+        .pdb-info-content h4 {
+            font-size: 12px;
+            margin: 0 0 6px 0;
+        }
+
+        .pdb-info-content h4 a {
+            color: #2196f3;
+            text-decoration: none;
+        }
+
+        .pdb-info-content h4 a:hover {
+            text-decoration: underline;
+        }
+
+        .pdb-info-content .pdb-row {
+            margin-bottom: 4px;
+        }
+
+        .pdb-info-content .pdb-row strong {
+            color: #333;
+            margin-right: 6px;
+        }
+
+        .pdb-info-content .residues-list {
+            font-family: monospace;
+            font-size: 11px;
+            margin-top: 4px;
+            word-break: break-all;
+        }
+
+        .pdb3d-container .empty-state {
+            position: absolute;
+            inset: 0;
+            color: #999;
+            z-index: 0;
+        }
+
+        #pdb3d-viewer {
+            position: relative;
+            z-index: 1;
+        }
+
+        #graph-network {
+            width: 100%;
+            height: 100%;
+        }
+
+        #pdb3d-viewer {
+            width: 100%;
+            height: 100%;
+            min-height: 400px;
+        }
+
+        #pdb3d-viewer canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        svg { width: 100%; height: 100%; display: block; }
+
+        .node { cursor: pointer; }
+
+        .node circle {
+            stroke-width: 2px;
+        }
+
+        .node:hover circle {
+            filter: brightness(1.15);
+        }
+
+        .node text {
+            font-size: 11px;
+            fill: #333;
+            pointer-events: none;
+            text-anchor: middle;
+            dominant-baseline: central;
+        }
+
+        .link {
+            stroke: #999;
+            stroke-opacity: 0.6;
+            stroke-width: 2px;
+        }
+
+        .link:hover {
+            stroke: #333;
+            stroke-opacity: 1;
+        }
+
+        .link.nc {
+            stroke: #d32f2f;
+            stroke-opacity: 0.9;
+        }
+
+        .link.nc:hover {
+            stroke: #b71c1c;
+        }
+
+        .link-label {
+            font-size: 10px;
+            fill: #666;
+            pointer-events: none;
+        }
+
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #999;
+        }
+
+        .empty-state p { margin: 8px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1>VeRNAl Motif Browser</h1>
+                <p>Load a motifs JSON file exported from a meta-graph</p>
+                <div class="file-input-wrapper">
+                    <input type="file" id="motifFileInput" accept=".json" />
+                </div>
+            </div>
+            <div class="filters" id="filtersSection" style="display: none;">
+                <div class="filter-row">
+                    <label>Min size (nodes)</label>
+                    <input type="range" id="sizeSlider" min="2" max="20" value="2" step="1" />
+                    <span class="filter-value" id="sizeValue">≥ 2</span>
+                </div>
+                <div class="filter-row">
+                    <div class="filter-switch">
+                        <input type="checkbox" id="ncOnlySwitch" />
+                        <label for="ncOnlySwitch" style="margin: 0;">Only motifs with NC edge</label>
+                    </div>
+                </div>
+            </div>
+            <div class="motif-list" id="motifList">
+                <div class="empty-state">
+                    <p>Load a motifs JSON file to begin</p>
+                    <p style="font-size: 11px;">Run: python tools/export_metagraph.py results/mggs/my_metagraph.p -o motifs.json</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="viewer-header">
+                <h2 id="viewerTitle">No motif selected</h2>
+                <div class="viewer-controls">
+                    <select id="instanceSelect" style="display: none;">
+                        <option value="">Select instance...</option>
+                    </select>
+                    <div class="info-panel" id="instanceInfo" style="display: none;">
+                        <strong>Instance:</strong> <span id="instanceNum">-</span> / <span id="totalInstances">-</span>
+                        <span style="margin-left: 15px;"><strong>Graph:</strong> <span id="graphId">-</span></span>
+                        <span style="margin-left: 15px;"><strong>Nodes:</strong> <span id="nodeCount">-</span></span>
+                        <span style="margin-left: 15px;"><strong>Edges:</strong> <span id="edgeCount">-</span></span>
+                    </div>
+                    <div id="clusterLegend" style="display: none; margin-top: 8px; font-size: 12px;"></div>
+                </div>
+            </div>
+            <div class="viewer-panels">
+                <div class="graph-container">
+                    <div id="graph-network"></div>
+                    <div class="empty-state" id="emptyState">
+                        <p>Select a motif to visualize</p>
+                    </div>
+                </div>
+                <div class="pdb3d-container">
+                    <div class="pdb3d-label">3D Structure (PDB)</div>
+                    <div id="pdb3d-viewer"></div>
+                    <div class="pdb-info-panel hidden" id="pdbInfoPanel">
+                        <div class="pdb-info-content" id="pdbInfoContent"></div>
+                    </div>
+                    <div class="empty-state" id="pdb3dEmptyState">
+                        <p>3D structure will appear here</p>
+                        <p style="font-size: 11px;">Shows motif residues highlighted in the selected PDB</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const CANONICAL_EDGES = ['CWW', 'B53', 'B35', ''];
+
+        let motifsData = null;
+        let currentSimulation = null;
+        let currentSvg = null;
+        let currentMotif = null;
+        let pdb3dViewer = null;
+
+        function parseNodeId(nodeId) {
+            if (!nodeId || typeof nodeId !== 'string') return null;
+            const parts = nodeId.split('.');
+            if (parts.length >= 3) {
+                return { pdbid: parts[0].toLowerCase().slice(0, 4), chain: parts[1], resi: parseInt(parts[2], 10) };
+            }
+            if (parts.length === 2) {
+                return { pdbid: parts[0].toLowerCase().slice(0, 4), chain: 'A', resi: parseInt(parts[1], 10) };
+            }
+            return null;
+        }
+
+        function isNonCanonical(label) {
+            return label && !CANONICAL_EDGES.includes(label);
+        }
+
+        function motifHasNC(motif) {
+            if (!motif.graphs) return false;
+            for (const g of motif.graphs) {
+                for (const link of (g.links || [])) {
+                    if (isNonCanonical(link.label)) return true;
+                }
+            }
+            return false;
+        }
+
+        document.getElementById('motifFileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    motifsData = JSON.parse(e.target.result);
+                    loadMotifs(motifsData);
+                } catch (err) {
+                    console.error(err);
+                    alert('Error parsing JSON: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        function applyFilters() {
+            if (!motifsData || !motifsData.motifs) return;
+            const sizeMin = parseInt(document.getElementById('sizeSlider').value) || 2;
+            const ncOnly = document.getElementById('ncOnlySwitch').checked;
+
+            let filtered = motifsData.motifs.filter((m, idx) => {
+                if (m.num_nodes < sizeMin) return false;
+                if (ncOnly && !motifHasNC(m)) return false;
+                return true;
+            });
+
+            renderMotifList(filtered);
+        }
+
+        function renderMotifList(filteredMotifs) {
+            const motifList = document.getElementById('motifList');
+            motifList.innerHTML = '';
+
+            if (!filteredMotifs || filteredMotifs.length === 0) {
+                motifList.innerHTML = '<div class="empty-state"><p>No motifs match filters</p></div>';
+                return;
+            }
+
+            filteredMotifs.forEach((motif, displayIdx) => {
+                const origIdx = motifsData.motifs.indexOf(motif);
+                const item = document.createElement('div');
+                item.className = 'motif-item';
+                item.onclick = () => selectMotif(origIdx, motif, item);
+
+                const ncBadge = motifHasNC(motif) ? ' <span style="color:#d32f2f;font-size:10px">NC</span>' : '';
+                item.innerHTML = `
+                    <div class="motif-header">
+                        <span class="motif-id">Motif ${origIdx}${ncBadge}</span>
+                    </div>
+                    <div class="motif-stats">
+                        <span>Cluster ${motif.cluster_id}</span>
+                        <span>Nodes: ${motif.num_nodes}</span>
+                        <span>Edges: ${motif.num_edges}</span>
+                        <span>Instances: ${motif.num_instances}</span>
+                    </div>
+                `;
+                motifList.appendChild(item);
+            });
+        }
+
+        function loadMotifs(data) {
+            motifsData = data;
+            const motifList = document.getElementById('motifList');
+
+            if (!data || !data.motifs || data.motifs.length === 0) {
+                document.getElementById('filtersSection').style.display = 'none';
+                motifList.innerHTML = '<div class="empty-state"><p>No motifs found</p></div>';
+                return;
+            }
+
+            const maxNodes = Math.max(...data.motifs.map(m => m.num_nodes || 2), 2);
+            const sizeSlider = document.getElementById('sizeSlider');
+            sizeSlider.max = Math.max(maxNodes, 20);
+            sizeSlider.value = 2;
+            document.getElementById('sizeValue').textContent = '≥ 2';
+
+            document.getElementById('filtersSection').style.display = 'block';
+            document.getElementById('sizeSlider').oninput = function() {
+                document.getElementById('sizeValue').textContent = '≥ ' + this.value;
+                applyFilters();
+            };
+            document.getElementById('ncOnlySwitch').onchange = applyFilters;
+
+            applyFilters();
+        }
+
+        function selectMotif(idx, motif, element) {
+            document.querySelectorAll('.motif-item').forEach(item => item.classList.remove('active'));
+            if (element) element.classList.add('active');
+
+            currentMotif = motif;
+            document.getElementById('viewerTitle').textContent = `Motif ${idx} (Cluster ${motif.cluster_id})`;
+
+            const instanceSelect = document.getElementById('instanceSelect');
+            const instanceInfo = document.getElementById('instanceInfo');
+
+            if (motif.graphs && motif.graphs.length > 0) {
+                instanceSelect.style.display = 'block';
+                instanceInfo.style.display = 'block';
+                instanceSelect.innerHTML = '<option value="">Select instance...</option>';
+
+                motif.graphs.forEach((g, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = `Instance ${i + 1} (${g.graph_id})`;
+                    instanceSelect.appendChild(opt);
+                });
+
+                document.getElementById('totalInstances').textContent = motif.graphs.length;
+                instanceSelect.value = '0';
+                displayGraph(motif.graphs[0]);
+            } else {
+                instanceSelect.style.display = 'none';
+                instanceInfo.style.display = 'none';
+                clearGraph();
+            }
+
+            instanceSelect.onchange = function() {
+                const i = parseInt(this.value);
+                if (!isNaN(i) && motif.graphs[i]) {
+                    displayGraph(motif.graphs[i]);
+                }
+            };
+        }
+
+        function displayGraph(graphData) {
+            document.getElementById('emptyState').style.display = 'none';
+
+            document.getElementById('instanceNum').textContent = 
+                (parseInt(document.getElementById('instanceSelect').value) || 0) + 1;
+            document.getElementById('graphId').textContent = graphData.graph_id || '-';
+            document.getElementById('nodeCount').textContent = graphData.nodes ? graphData.nodes.length : 0;
+            document.getElementById('edgeCount').textContent = graphData.links ? graphData.links.length : 0;
+
+            clearGraph();
+
+            const container = document.getElementById('graph-network');
+            const rect = container.getBoundingClientRect();
+            const width = rect.width;
+            const height = rect.height;
+
+            const nodes = (graphData.nodes || []).map((n, i) => ({
+                id: n.id !== undefined ? n.id : String(i),
+                label: n.label || String(n.id || i),
+                cluster_id: n.cluster_id
+            }));
+
+            const clusterIds = [...new Set(nodes.map(n => n.cluster_id).filter(x => x != null))];
+            const colorScale = d3.scaleOrdinal(clusterIds, d3.schemeTableau10);
+
+            const legendEl = document.getElementById('clusterLegend');
+            if (clusterIds.length > 0) {
+                legendEl.style.display = 'block';
+                legendEl.innerHTML = clusterIds.map(cid =>
+                    `<span style="display:inline-block;margin-right:12px;"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${colorScale(cid)};vertical-align:middle;margin-right:4px;"></span>Cluster ${cid}</span>`
+                ).join('');
+            } else {
+                legendEl.style.display = 'none';
+            }
+
+            const nodeMap = new Map(nodes.map(n => [n.id, n]));
+
+            const links = (graphData.links || []).map(link => {
+                const src = typeof link.source === 'object' ? link.source.id : link.source;
+                const tgt = typeof link.target === 'object' ? link.target.id : link.target;
+                const s = nodeMap.get(src);
+                const t = nodeMap.get(tgt);
+                if (!s || !t) return null;
+                return {
+                    source: s,
+                    target: t,
+                    label: link.label || ''
+                };
+            }).filter(Boolean);
+
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            currentSvg = svg;
+
+            const zoom = d3.zoom()
+                .scaleExtent([0.1, 4])
+                .on('zoom', (event) => g.attr('transform', event.transform));
+
+            svg.call(zoom);
+
+            const g = svg.append('g');
+
+            const simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links).id(d => d.id).distance(80))
+                .force('charge', d3.forceManyBody().strength(-300))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(25));
+
+            currentSimulation = simulation;
+
+            const link = g.append('g').attr('class', 'links')
+                .selectAll('line')
+                .data(links)
+                .enter().append('line')
+                .attr('class', d => 'link' + (isNonCanonical(d.label) ? ' nc' : ''))
+                .attr('stroke', d => isNonCanonical(d.label) ? '#d32f2f' : '#999')
+                .attr('stroke-width', 2)
+                .attr('stroke-opacity', d => isNonCanonical(d.label) ? 0.9 : 0.6);
+
+            const linkLabels = g.append('g').attr('class', 'link-labels')
+                .selectAll('text')
+                .data(links.filter(l => l.label))
+                .enter().append('text')
+                .attr('class', 'link-label')
+                .attr('fill', d => isNonCanonical(d.label) ? '#b71c1c' : '#666')
+                .text(d => d.label);
+
+            const node = g.append('g').attr('class', 'nodes')
+                .selectAll('g')
+                .data(nodes)
+                .enter().append('g')
+                .attr('class', 'node')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            const fillColor = d => {
+                const c = d.cluster_id != null ? colorScale(d.cluster_id) : null;
+                return c || '#4a90e2';
+            };
+            const strokeColor = d => {
+                const c = fillColor(d);
+                const darker = d3.color(c);
+                return darker ? darker.darker(0.5) : '#2c5aa0';
+            };
+            node.append('circle').attr('r', 18)
+                .attr('fill', fillColor)
+                .attr('stroke', strokeColor)
+                .attr('stroke-width', 2);
+
+            node.append('text')
+                .text(d => d.label)
+                .attr('dy', 0)
+                .attr('font-size', '11px')
+                .attr('fill', '#333');
+
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y);
+
+                linkLabels
+                    .attr('x', d => (d.source.x + d.target.x) / 2)
+                    .attr('y', d => (d.source.y + d.target.y) / 2);
+
+                node.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+
+            displayPdb3D(graphData, colorScale);
+            updatePdbInfoPanel(graphData);
+        }
+
+        function updatePdbInfoPanel(graphData) {
+            const panel = document.getElementById('pdbInfoPanel');
+            const content = document.getElementById('pdbInfoContent');
+            if (!graphData || !graphData.nodes || graphData.nodes.length === 0) {
+                panel.classList.add('hidden');
+                return;
+            }
+            const residues = graphData.nodes.map(n => parseNodeId(n.id)).filter(Boolean);
+            const pdbid = (graphData.graph_id || residues[0]?.pdbid || '').toUpperCase();
+            if (!pdbid) {
+                panel.classList.add('hidden');
+                return;
+            }
+            panel.classList.remove('hidden');
+            const resList = residues
+                .filter(r => r.chain && r.resi != null)
+                .sort((a, b) => (a.chain !== b.chain) ? a.chain.localeCompare(b.chain) : a.resi - b.resi)
+                .map(r => `${r.chain}.${r.resi}`)
+                .join(', ');
+            content.innerHTML = `
+                <h4><a href="https://www.rcsb.org/structure/${pdbid}" target="_blank" rel="noopener">PDB ${pdbid}</a></h4>
+                <div class="pdb-row"><strong>Title:</strong> <span id="pdbTitle">Loading...</span></div>
+                <div class="pdb-row" id="pdbExtraRow"></div>
+                <div class="pdb-row"><strong>Residues:</strong></div>
+                <div class="residues-list">${resList || '-'}</div>
+            `;
+            fetch(`https://data.rcsb.org/rest/v1/core/entry/${pdbid}`)
+                .then(r => r.ok ? r.json() : null)
+                .then(data => {
+                    const titleEl = document.getElementById('pdbTitle');
+                    const extraEl = document.getElementById('pdbExtraRow');
+                    if (data) {
+                        if (titleEl) titleEl.textContent = data.struct?.title || 'N/A';
+                        if (extraEl) {
+                            const parts = [];
+                            if (data.rcsb_entry_info?.resolution_combined) parts.push(`Resolution: ${data.rcsb_entry_info.resolution_combined} Å`);
+                            const methods = data.exptl?.map(e => e.method)?.filter(Boolean);
+                            if (methods?.length) parts.push(`Method: ${[...new Set(methods)].join(', ')}`);
+                            extraEl.textContent = parts.length ? parts.join(' • ') : '';
+                            extraEl.style.display = parts.length ? 'block' : 'none';
+                        }
+                    }
+                })
+                .catch(() => {
+                    const titleEl = document.getElementById('pdbTitle');
+                    if (titleEl) titleEl.textContent = 'N/A (fetch failed)';
+                });
+        }
+
+        function clearGraph() {
+            if (currentSimulation) {
+                currentSimulation.stop();
+                currentSimulation = null;
+            }
+            if (currentSvg) {
+                currentSvg.remove();
+                currentSvg = null;
+            }
+            d3.select('#graph-network').selectAll('*').remove();
+            document.getElementById('emptyState').style.display = 'flex';
+            document.getElementById('clusterLegend').style.display = 'none';
+            clearPdb3D();
+        }
+
+        function clearPdb3D() {
+            if (pdb3dViewer) {
+                pdb3dViewer.removeAllModels();
+                pdb3dViewer.clear();
+                pdb3dViewer.render();
+            }
+            document.getElementById('pdb3dEmptyState').style.display = 'flex';
+            document.getElementById('pdbInfoPanel').classList.add('hidden');
+        }
+
+        function displayPdb3D(graphData, colorScale) {
+            document.getElementById('pdb3dEmptyState').style.display = 'none';
+            if (!graphData || !graphData.nodes || graphData.nodes.length === 0) {
+                clearPdb3D();
+                return;
+            }
+            const residues = graphData.nodes.map(n => ({ ...parseNodeId(n.id), cluster_id: n.cluster_id }));
+            const pdbid = graphData.graph_id || residues[0]?.pdbid;
+            if (!pdbid) {
+                clearPdb3D();
+                return;
+            }
+            const container = document.getElementById('pdb3d-viewer');
+            if (!pdb3dViewer) {
+                pdb3dViewer = $3Dmol.createViewer(container, { backgroundColor: 'white' });
+            }
+            pdb3dViewer.clear();
+            const clusterIds = [...new Set(residues.map(r => r.cluster_id).filter(x => x != null))];
+            const scale = colorScale || d3.scaleOrdinal(clusterIds, d3.schemeTableau10);
+            const applyStyles = () => {
+                pdb3dViewer.setStyle({}, { cartoon: { color: 'lightgrey' } });
+                residues.forEach((r) => {
+                    if (!r.chain || r.resi == null) return;
+                    const sel = { chain: r.chain, resi: r.resi };
+                    const color = r.cluster_id != null ? scale(r.cluster_id) : '#4a90e2';
+                    pdb3dViewer.setStyle(sel, { stick: { color: color }, cartoon: { color: color } });
+                });
+                const orSels = residues.filter(r => r.chain && r.resi != null).map(r => ({ chain: r.chain, resi: r.resi }));
+                if (orSels.length > 0) {
+                    pdb3dViewer.zoomTo({ or: orSels }, 500);
+                } else {
+                    pdb3dViewer.zoomTo();
+                }
+                pdb3dViewer.render();
+            };
+            $3Dmol.download('pdb:' + pdbid, pdb3dViewer, {}, applyStyles);
+        }
+    </script>
+</body>
+</html>

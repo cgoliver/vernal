@@ -1,0 +1,25 @@
+# Vernal - Fuzzy Recurrent Subgraph Mining
+# Install: pip install -r requirements.txt
+#
+# Note: On macOS ARM, DGL may need a graphbolt symlink for PyTorch 2.3.1:
+#   cd .venv/lib/python*/site-packages/dgl/graphbolt
+#   ln -sf libgraphbolt_pytorch_2.3.0.dylib libgraphbolt_pytorch_2.3.1.dylib
+
+torch>=2.0,<2.4
+dgl>=2.0
+torchdata>=0.5,<0.8
+networkx>=3.0
+numpy>=1.24
+scipy>=1.10
+scikit-learn>=1.3
+matplotlib>=3.7
+pandas>=2.0
+biopython>=1.81
+tqdm
+multiset>=2.1
+tensorboard
+absl-py
+seaborn
+pyyaml
+pydantic
+rnaglib
